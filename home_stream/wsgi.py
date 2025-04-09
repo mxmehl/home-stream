@@ -4,6 +4,8 @@
 
 """WSGI entry point for the Home Stream application."""
 
+import sys
+
 from home_stream.app import create_app
 
-app = create_app("config.yaml")
+app = create_app(str(sys.argv[1]))

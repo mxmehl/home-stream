@@ -4,7 +4,7 @@
 
 # Path to a directory where the media files are stored. The directory must be accessible by the user
 # running this application
-media_root: /data/media
+media_root: /media/data
 # Extensions of video and audio files to be served. The application will only serve files with these
 # extensions
 video_extensions:
