@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2025 Max Mehl <https://mehl.mx>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+# Tool caches
+**/__pycache__
+**/.ruff_cache/
+**/.mypy_cache/
+# Virtual environment & similar
+.venv/
+# IDE folders
+.idea/
+.vscode/
+./src-ui/.vscode
+# VCS
+.git
+# Test related
+**/.pytest_cache
+**/tests
+**/*.spec.ts
+**/htmlcov
+# Configuration
+./config
+./Dockerfile
+./docker-compose*
+./renovate.json*

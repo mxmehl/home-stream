@@ -4,7 +4,8 @@
 
 services:
   home-stream:
-    image: ghcr.io/mxmehl/home-stream:latest
+    image: ghcr.io/mxmehl/home-stream:main
+    container_name: home-stream
     restart: unless-stopped
     ports:
       - "8000:8000"
