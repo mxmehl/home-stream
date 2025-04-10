@@ -25,3 +25,6 @@ users:
 secret_key: "CHANGE_ME_IN_FAVOUR_OF_A_LONG_PASSWORD"
 # Protocol used to serve the files. Can be either http or https
 protocol: https
+# Optional: rate limit storage backend, defaults to memory://
+# In the proposed Docker setup, it could be redis://home-stream-redis:6379
+# rate_limit_storage_uri: redis://localhost:6379

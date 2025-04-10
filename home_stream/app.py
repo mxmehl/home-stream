@@ -34,9 +34,10 @@ from home_stream.helpers import (
 )
 
 
-def create_app(config_path: str) -> Flask:
+def create_app(config_path: str, debug: bool = False) -> Flask:
     """Create a Flask application instance."""
     app = Flask(__name__)
+    app.debug = debug
     load_config(app, config_path)
 
     if not app.debug:
@@ -60,8 +61,12 @@ def create_app(config_path: str) -> Flask:
         get_remote_address,
         app=app,
         default_limits=["50 per 10 minutes"],
-        storage_uri="memory://",
+        storage_uri=app.config.get("RATE_LIMIT_STORAGE_URI"),
     )
+    if app.config.get("RATE_LIMIT_STORAGE_URI") == "memory://" and not app.debug:
+        app.logger.warning(
+            "Rate limiting is using in-memory storage. Limits may not work with multiple processes."
+        )
 
     # Enable CSRF protection
     CSRFProtect(app)
@@ -218,7 +223,7 @@ def main():
     args = parser.parse_args()
 
     # Create the app instance with the Flask development server
-    app = create_app(config_path=os.path.abspath(args.config_file))
+    app = create_app(config_path=os.path.abspath(args.config_file), debug=args.debug)
     app.run(debug=args.debug, host=args.host, port=args.port)
 
 
