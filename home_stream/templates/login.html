@@ -12,10 +12,11 @@ SPDX-License-Identifier: GPL-3.0-only
 <p style="color: red">{{ error }}</p>
 {% endif %}
 <form method="post">
-  <label for="username">Username</label>
-  <input name="username" type="text" autofocus required>
-  <label for="password">Password</label>
-  <input name="password" type="password" required>
+  {{ form.csrf_token }}
+  {{ form.username.label }}
+  {{ form.username() }}
+  {{ form.password.label }}
+  {{ form.password() }}
   <button type="submit">Login</button>
 </form>
 {% endblock %}

@@ -17,7 +17,9 @@ from flask import (
     session,
     url_for,
 )
+from flask_wtf import CSRFProtect
 
+from home_stream.forms import LoginForm
 from home_stream.helpers import (
     file_type,
     get_stream_token,
@@ -32,6 +34,10 @@ def create_app(config_path: str) -> Flask:
     """Create a Flask application instance."""
     app = Flask(__name__)
     load_config(app, config_path)
+
+    # Enable CSRF protection
+    CSRFProtect(app)
+
     init_routes(app)
     return app
 
@@ -50,15 +56,17 @@ def init_routes(app: Flask):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        form = LoginForm()
         error = None
-        if request.method == "POST":
-            username = request.form.get("username")
-            password = request.form.get("password")
+        if form.validate_on_submit():
+            username = form.username.data
+            password = form.password.data
             if validate_user(username, password):
+                session.clear()
                 session["username"] = username
                 return redirect(request.args.get("next") or url_for("index"))
             error = "Invalid credentials"
-        return render_template("login.html", error=error)
+        return render_template("login.html", form=form, error=error)
 
     @app.route("/logout")
     def logout():
