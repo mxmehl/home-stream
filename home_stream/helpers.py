@@ -47,12 +47,25 @@ def load_config(app: Flask, filename: str) -> None:
             app.config[key.upper()] = value
 
 
-def secure_path(subpath):
-    """Secure the path to prevent directory traversal attacks."""
-    full_path = os.path.realpath(os.path.join(current_app.config["MEDIA_ROOT"], subpath))
-    if not full_path.startswith(os.path.realpath(current_app.config["MEDIA_ROOT"])):
+def secure_path(subpath: str) -> str:
+    """Secure and resolve a path inside the media root, including mounts or symlinks."""
+    media_root = os.path.abspath(current_app.config["MEDIA_ROOT"])
+    real_media_root = os.path.realpath(media_root)
+
+    unsafe_path = os.path.normpath(os.path.join(media_root, subpath))
+    resolved_path = os.path.realpath(unsafe_path)
+
+    allowed_roots = [media_root, real_media_root]
+
+    if not any(
+        resolved_path == root or resolved_path.startswith(root + os.sep) for root in allowed_roots
+    ):
+        current_app.logger.warning(
+            f"Blocked path traversal or symlink escape: {subpath} → {resolved_path}"
+        )
         abort(403)
-    return full_path
+
+    return resolved_path
 
 
 def file_type(filename):
