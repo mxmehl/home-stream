@@ -12,6 +12,15 @@ import yaml
 from bcrypt import checkpw
 from flask import Flask, abort, current_app, request
 
+REQUIRED_CONFIG_KEYS = (
+    "users",
+    "video_extensions",
+    "audio_extensions",
+    "media_root",
+    "secret_key",
+    "protocol",
+)
+
 
 def load_config(app: Flask, filename: str) -> None:
     """Load configuration from a YAML file."""
@@ -19,14 +28,7 @@ def load_config(app: Flask, filename: str) -> None:
         config = yaml.safe_load(f)
 
     # Check whether mandatory keys are filled
-    for required_key in (
-        "users",
-        "video_extensions",
-        "audio_extensions",
-        "media_root",
-        "secret_key",
-        "protocol",
-    ):
+    for required_key in REQUIRED_CONFIG_KEYS:
         if required_key not in config:
             raise KeyError(f"Missing '{required_key}' key in config file.")
     # Combine video and audio extensions
