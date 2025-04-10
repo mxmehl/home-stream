@@ -4,7 +4,7 @@
 
 [tool.poetry]
 name = "home-stream"
-version = "0.4.1"
+version = "0.4.2"
 description = "Browser and streaming interface for local media files"
 repository = "https://github.com/mxmehl/home-stream"
 authors = ["Max Mehl <mail@mehl.mx>"]
