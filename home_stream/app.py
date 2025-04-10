@@ -5,6 +5,7 @@
 """Home Stream Web Application"""
 
 import argparse
+import logging
 import os
 
 from flask import (
@@ -37,6 +38,12 @@ def create_app(config_path: str) -> Flask:
     """Create a Flask application instance."""
     app = Flask(__name__)
     load_config(app, config_path)
+
+    if not app.debug:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+        )
 
     # Trust headers from reverse proxy (1 layer by default)
     app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
@@ -84,14 +91,22 @@ def init_routes(app: Flask, limiter: Limiter):
             username = form.username.data
             password = form.password.data
             if validate_user(username, password):
+                app.logger.info(
+                    f"Login success for user '{username}' from IP {request.remote_addr}"
+                )
                 session.clear()
                 session["username"] = username
                 return redirect(request.args.get("next") or url_for("index"))
+
+            app.logger.warning(f"Login failed for user '{username}' from IP {request.remote_addr}")
             error = "Invalid credentials"
         return render_template("login.html", form=form, error=error)
 
     @app.route("/logout")
     def logout():
+        user = session.get("username")
+        if user:
+            app.logger.info(f"User '{user}' logged out from IP {request.remote_addr}")
         session.clear()
         return redirect(url_for("login"))
 
