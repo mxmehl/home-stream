@@ -17,6 +17,11 @@ def load_config(app: Flask, filename: str) -> None:
     """Load configuration from a YAML file."""
     with open(filename, encoding="UTF-8") as f:
         config = yaml.safe_load(f)
+
+    # Error when using default secret key
+    if config.get("secret_key") == "CHANGE_ME_IN_FAVOUR_OF_A_LONG_PASSWORD":
+        raise ValueError("You must change the default secret_key in the config file.")
+
     # Check whether mandatory keys are filled
     for required_key in (
         "users",
