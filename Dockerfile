@@ -39,4 +39,4 @@ COPY . /app
 RUN chown -R app:app /app
 USER app
 
-CMD ["poetry", "run", "uwsgi", "--ini", "uwsgi.ini"]
+CMD ["poetry", "run", "uwsgi", "--ini", "uwsgi.docker.ini"]

@@ -5,6 +5,7 @@
 """Home Stream Web Application"""
 
 import argparse
+import logging
 import os
 
 from flask import (
@@ -17,7 +18,12 @@ from flask import (
     session,
     url_for,
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
+from home_stream.forms import LoginForm
 from home_stream.helpers import (
     file_type,
     get_stream_token,
@@ -32,11 +38,39 @@ def create_app(config_path: str) -> Flask:
     """Create a Flask application instance."""
     app = Flask(__name__)
     load_config(app, config_path)
-    init_routes(app)
+
+    if not app.debug:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+        )
+
+    # Trust headers from reverse proxy (1 layer by default)
+    app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
+        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    )
+
+    # Secure session cookie config
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SECURE=True, SESSION_COOKIE_SAMESITE="Lax"
+    )
+
+    # Set up rate limiting
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=["50 per 10 minutes"],
+        storage_uri="memory://",
+    )
+
+    # Enable CSRF protection
+    CSRFProtect(app)
+
+    init_routes(app, limiter)
     return app
 
 
-def init_routes(app: Flask):
+def init_routes(app: Flask, limiter: Limiter):
     """Initialize routes for the Flask application."""
 
     @app.context_processor
@@ -49,19 +83,30 @@ def init_routes(app: Flask):
         return session.get("username") in app.config["USERS"]
 
     @app.route("/login", methods=["GET", "POST"])
+    @limiter.limit("2 per 10 seconds")
     def login():
+        form = LoginForm()
         error = None
-        if request.method == "POST":
-            username = request.form.get("username")
-            password = request.form.get("password")
+        if form.validate_on_submit():
+            username = form.username.data
+            password = form.password.data
             if validate_user(username, password):
+                app.logger.info(
+                    f"Login success for user '{username}' from IP {request.remote_addr}"
+                )
+                session.clear()
                 session["username"] = username
                 return redirect(request.args.get("next") or url_for("index"))
+
+            app.logger.warning(f"Login failed for user '{username}' from IP {request.remote_addr}")
             error = "Invalid credentials"
-        return render_template("login.html", error=error)
+        return render_template("login.html", form=form, error=error)
 
     @app.route("/logout")
     def logout():
+        user = session.get("username")
+        if user:
+            app.logger.info(f"User '{user}' logged out from IP {request.remote_addr}")
         session.clear()
         return redirect(url_for("login"))
 
@@ -130,6 +175,26 @@ def init_routes(app: Flask):
         if os.path.isfile(full_path):
             return send_file(full_path)
         abort(404)
+
+    # ERROR HANDLERS
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        ip = request.remote_addr
+        endpoint = request.endpoint
+        app.logger.warning(f"Rate limit exceeded from IP {ip} on {endpoint}: {e.description}")
+
+        # Nice error message for login route
+        if endpoint == "login":
+            form = LoginForm()
+            return (
+                render_template(
+                    "login.html", error="Too many login attempts. Try again soon.", form=form
+                ),
+                429,
+            )
+
+        # Default response for other rate-limited routes
+        return "Too many requests. Please slow down.", 429
 
 
 def main():
