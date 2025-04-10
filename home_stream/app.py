@@ -18,6 +18,7 @@ from flask import (
     url_for,
 )
 from flask_wtf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
@@ -34,6 +35,14 @@ def create_app(config_path: str) -> Flask:
     """Create a Flask application instance."""
     app = Flask(__name__)
     load_config(app, config_path)
+
+    # Trust headers from reverse proxy (1 layer by default)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)  # type: ignore[method-assign]
+
+    # Secure session cookie config
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SECURE=True, SESSION_COOKIE_SAMESITE="Lax"
+    )
 
     # Enable CSRF protection
     CSRFProtect(app)
