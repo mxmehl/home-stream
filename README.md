@@ -80,16 +80,22 @@ home-stream -c config.yaml  # uses Flask development server
 
 Log in via browser, by default on [localhost:8000](http://localhost:8000). Browse and play media, or copy permanent stream URLs.
 
-For productive use, consider using uWSGI. However, note that streaming many and large chunks of files may trigger issues with apps like gunicorn. It is planned for this project to document practical solutions soon.
+### Production Webserver
+
+For productive use, you should use a proper webserver. Streaming many and large chunks of files may trigger issues with apps like gunicorn, so uWSGI is officially supported.
+
+For a quick start, run `poetry run uwsgi --ini uwsgi.ini`. Using the docker image [`ghcr.io/mxmehl/home-stream`](https://github.com/mxmehl/home-stream/pkgs/container/home-stream) you would have everything contained into one container, ready to be use locally or behind a reverse proxy. Note that depending on your use-cases, you may want to reconfigure some uwsgi settings. This currently would need to be done manually.
 
 ### Usage Scenarios
 
 The application is mainly designed with the use-case of running it on a NAS or home server with direct media access to allow accessing your media files remotely.
 
-For this, you may put this application behind a reverse proxy or make it accessible via a VPN connection. This application and the documentation does not help to set this up.
+For this, you may put this application behind a reverse proxy or make it accessible via a VPN connection.
 
 Of course, you can also use it purely locally, although there are probably better tools to administrate your media files.
 
 ## License
 
 This project is licensed under the terms of the **GPL-3.0-only** license, but contains elements under different licenses.
+
+The project is [REUSE compliant](https://reuse.software), so licensing and copyright information is available for every single file.
