@@ -17,6 +17,8 @@ from flask import (
     session,
     url_for,
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_wtf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -37,21 +39,31 @@ def create_app(config_path: str) -> Flask:
     load_config(app, config_path)
 
     # Trust headers from reverse proxy (1 layer by default)
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)  # type: ignore[method-assign]
+    app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
+        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    )
 
     # Secure session cookie config
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SECURE=True, SESSION_COOKIE_SAMESITE="Lax"
     )
 
+    # Set up rate limiting
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=["50 per 10 minutes"],
+        storage_uri="memory://",
+    )
+
     # Enable CSRF protection
     CSRFProtect(app)
 
-    init_routes(app)
+    init_routes(app, limiter)
     return app
 
 
-def init_routes(app: Flask):
+def init_routes(app: Flask, limiter: Limiter):
     """Initialize routes for the Flask application."""
 
     @app.context_processor
@@ -64,6 +76,7 @@ def init_routes(app: Flask):
         return session.get("username") in app.config["USERS"]
 
     @app.route("/login", methods=["GET", "POST"])
+    @limiter.limit("2 per 10 seconds")
     def login():
         form = LoginForm()
         error = None
@@ -147,6 +160,26 @@ def init_routes(app: Flask):
         if os.path.isfile(full_path):
             return send_file(full_path)
         abort(404)
+
+    # ERROR HANDLERS
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        ip = request.remote_addr
+        endpoint = request.endpoint
+        app.logger.warning(f"Rate limit exceeded from IP {ip} on {endpoint}: {e.description}")
+
+        # Nice error message for login route
+        if endpoint == "login":
+            form = LoginForm()
+            return (
+                render_template(
+                    "login.html", error="Too many login attempts. Try again soon.", form=form
+                ),
+                429,
+            )
+
+        # Default response for other rate-limited routes
+        return "Too many requests. Please slow down.", 429
 
 
 def main():
