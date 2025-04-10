@@ -23,7 +23,7 @@ def test_login_form_has_fields(client):
     assert form.find("input", {"name": "password"})
 
 
-def test_browse_page_shows_file_actions(client):
+def test_browse_page_shows_file_actions(client, app, media_file):  # pylint: disable=unused-argument
     """Ensure browse.html shows download, play, and copy buttons for media files"""
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
