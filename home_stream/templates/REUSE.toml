@@ -1,0 +1,7 @@
+version = 1
+
+# A simple glob of all files in resources/img/
+[[annotations]]
+path = "*.html"
+SPDX-FileCopyrightText = "2025 Max Mehl <https://mehl.mx>"
+SPDX-License-Identifier = "GPL-3.0-only"
