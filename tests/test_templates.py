@@ -10,7 +10,7 @@ from urllib.parse import unquote
 
 from bs4 import BeautifulSoup
 
-from home_stream.helpers import get_stream_token
+from home_stream.helpers import get_stream_token, get_version_info
 
 
 def test_login_form_has_fields(client):
@@ -106,3 +106,28 @@ def test_browse_stream_url_copy_button(client, media_file):
     stream_url = unquote(match.group(1))
     expected_token = get_stream_token("testuser")
     assert stream_url.startswith(f"http://localhost/dl-token/testuser/{expected_token}/{filename}")
+
+
+def test_footer_version_displayed_when_logged_in(client):
+    """Ensure footer shows version info when user is logged in"""
+    with client.session_transaction() as sess:
+        sess["username"] = "testuser"
+
+    response = client.get("/", follow_redirects=True)
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    footer = soup.find("footer")
+    assert footer is not None, "Footer not found"
+    assert "home-stream" in footer.text
+    assert get_version_info() in footer.text  # Version number appears
+
+
+def test_footer_version_hidden_when_not_logged_in(client):
+    """Ensure footer does not show version info when user is not logged in"""
+    response = client.get("/", follow_redirects=True)
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    footer = soup.find("footer")
+    assert footer is not None, "Footer not found"
+    assert "home-stream" in footer.text
+    assert get_version_info() not in footer.text  # Version number appears

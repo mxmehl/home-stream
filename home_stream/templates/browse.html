@@ -1,18 +1,18 @@
-{% extends "base.html" %}
+{%- extends "base.html" %}
 
-{% block content %}
-{% if folders %}
+{%- block content %}
+{%- if folders %}
 <h2>Folders</h2>
 <ul>
-  {% for name, rel in folders %}
+  {%- for name, rel in folders %}
   <li><a href="{{ url_for('browse', subpath=rel) }}">{{ name }}</a></li>
-  {% endfor %}
+  {%- endfor %}
 </ul>
-{% endif %}
+{%- endif %}
 {% if files %}
 <h2>Media Files</h2>
 <ul class="files">
-  {% for name, rel in files %}
+  {%- for name, rel in files %}
   {#- Create urlencoded stream URL based on user-individual token and path #}
   {%- set stream_path = ('dl-token', username, stream_token, rel) | join("/") | urlencode %}
   {%- set stream_url = protocol + '://' + request.host + '/' + stream_path %}
@@ -24,7 +24,7 @@
       ▶️ Copy Stream URL
     </button>
   </li>
-  {% endfor %}
+  {%- endfor %}
 </ul>
-{% endif %}
-{% endblock %}
+{%- endif %}
+{%- endblock %}

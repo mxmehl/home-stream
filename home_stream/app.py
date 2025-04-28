@@ -27,11 +27,14 @@ from home_stream.forms import LoginForm
 from home_stream.helpers import (
     file_type,
     get_stream_token,
+    get_version_info,
     load_config,
     secure_path,
     truncate_secret,
     validate_user,
 )
+
+from . import __version__
 
 
 def create_app(config_path: str, debug: bool = False) -> Flask:
@@ -78,10 +81,12 @@ def create_app(config_path: str, debug: bool = False) -> Flask:
 def init_routes(app: Flask, limiter: Limiter):
     """Initialize routes for the Flask application."""
 
+    # Inject variables into templates
     @app.context_processor
-    def inject_auth():
+    def inject_vars():
         return {
             "stream_token": get_stream_token(session["username"]) if "username" in session else "",
+            "version_info": get_version_info(),
         }
 
     def is_authenticated():
@@ -219,6 +224,7 @@ def main():
         help="Enable debug mode",
         default=False,
     )
+    parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
 
     args = parser.parse_args()
 

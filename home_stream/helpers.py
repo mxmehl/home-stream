@@ -7,10 +7,13 @@
 import hashlib
 import hmac
 import os
+import subprocess
 
 import yaml
 from bcrypt import checkpw
 from flask import Flask, abort, current_app, request
+
+from . import __version__
 
 REQUIRED_CONFIG_KEYS = (
     "users",
@@ -112,3 +115,15 @@ def truncate_secret(secret: str, chars: int = 8) -> str:
     if len(secret) > chars:
         return secret[:chars] + "*" * (len(secret) - chars)
     return secret
+
+
+def get_version_info():
+    """Get the version information of the application"""
+    # Get short git commit hash if available
+    try:
+        commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode().strip()
+    except Exception:  # pylint: disable=broad-exception-caught
+        current_app.logger.debug("Failed to get git commit hash.", exc_info=True)
+        commit = "unknown commit"
+
+    return f"{__version__} ({commit})"

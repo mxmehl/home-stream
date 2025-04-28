@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <title>Home Stream</title>
@@ -8,22 +9,31 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   <script src="{{ url_for('static', filename='main.js') }}" crossorigin></script>
 </head>
+
 <body>
   <main class="container">
-    {% if session.username %}
-      <div style="position: absolute; top: 1rem; right: 1rem;">
-        <form method="get" action="{{ url_for('logout') }}">
-          <button style="font-size: 0.9rem;">Logout ({{ session.username }})</button>
-        </form>
-      </div>
-    {% endif %}
+    {%- if session.username %}
+    <div id="user-info">
+      <form method="get" action="{{ url_for('logout') }}">
+        <button>Logout ({{ session.username }})</button>
+      </form>
+    </div>
+    {%- endif %}
     <h1>{{ path or 'Overview' }}</h1>
-    {% if path %}
-    {% set parent = path.rsplit('/', 1)[0] if '/' in path else '' %}
+    {%- if path %}
+    {%- set parent = path.rsplit('/', 1)[0] if '/' in path else '' %}
     <p><a href="{{ url_for('browse', subpath=parent) }}">⬅ One level up</a></p>
-    {% endif %}
-    {% block content %}
-    {% endblock %}
+    {%- endif %}
+    {%- block content %}
+    {%- endblock %}
   </main>
+  <footer class="container">
+    <hr />
+    <p>
+      Powered by <a href="https://github.com/mxmehl/home-stream" target="_blank">home-stream</a>
+      {%- if session.username %} {{ version_info }}{% endif %}
+    </p>
+  </footer>
 </body>
+
 </html>
