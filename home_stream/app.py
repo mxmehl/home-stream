@@ -25,13 +25,12 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
-    deslugify,
     file_type,
     get_stream_token,
     get_version_info,
+    list_folder_entries,
     load_config,
-    secure_path,
-    slugify,
+    resolve_real_path_from_slugs,
     truncate_secret,
     validate_user,
 )
@@ -135,49 +134,14 @@ def init_routes(app: Flask, limiter: Limiter):
             return redirect(url_for("login", next=request.full_path))
 
         parts = subpath.split("/") if subpath else []
-        real_parts = []
-        current_dir = secure_path("")  # Start from media root
 
-        # Resolve each slug part to real folder name
-        for slug in parts:
-            entries = [
-                entry
-                for entry in os.listdir(current_dir)
-                if os.path.isdir(os.path.join(current_dir, entry))
-            ]
-            for entry in entries:
-                if slugify(entry) == slug:
-                    real_parts.append(entry)
-                    current_dir = os.path.join(current_dir, entry)
-                    break
-            else:
-                abort(404)  # No match found
-
-        current_path = os.path.join(secure_path(""), *real_parts)
-
-        if not os.path.isdir(current_path):
+        real_path = resolve_real_path_from_slugs(parts)
+        if not os.path.isdir(real_path):
             abort(404)
 
-        # Now generate full slug paths
-        folders, files = [], []
-        for entry in os.listdir(current_path):
-            full = os.path.join(current_path, entry)
-            entry_slug = slugify(entry)
-            if os.path.isdir(full) and not entry.startswith("."):
-                folder_slug_path = "/".join(parts + [entry_slug])
-                folders.append((entry, folder_slug_path))
-            elif os.path.isfile(full):
-                ext = os.path.splitext(entry)[1].lower().strip(".")
-                if ext in app.config["MEDIA_EXTENSIONS"]:
-                    file_slug_path = "/".join(parts + [entry_slug])
-                    files.append((entry, file_slug_path))
+        folders, files = list_folder_entries(real_path, parts)
 
-        folders.sort(key=lambda x: x[0].lower())
-        files.sort(key=lambda x: x[0].lower())
-
-        # Prepare slugified path for the template
-        path_parts = parts  # parts already split slug segments
-        slugified_path = "/".join(path_parts) if parts else ""
+        slugified_path = "/".join(parts) if parts else ""
 
         return render_template(
             "browse.html",
@@ -194,26 +158,18 @@ def init_routes(app: Flask, limiter: Limiter):
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
-        # Resolve slug path to real path
         parts = subpath.split("/")
-        real_parts = []
-        current_dir = secure_path("")  # Start from root
-        for slug in parts:
-            real_name = deslugify(slug, current_dir)
-            real_parts.append(real_name)
-            current_dir = os.path.join(current_dir, real_name)
+        real_path = resolve_real_path_from_slugs(parts)
 
-        real_path = "/".join(real_parts)
-        secure_path(real_path)
+        if not os.path.isfile(real_path):
+            abort(404)
 
-        # Prepare slugified path for play
-        path_parts = real_path.split("/")
-        slug_parts = [slugify(part) for part in path_parts]
-        slugified_path = "/".join(slug_parts)
+        # slugified_path is simply the incoming slug parts joined back
+        slugified_path = "/".join(parts)
 
         return render_template(
             "play.html",
-            path=real_path,
+            path=subpath,
             slugified_path=slugified_path,
             mediatype=file_type(real_path),
             username=session.get("username"),
@@ -229,27 +185,13 @@ def init_routes(app: Flask, limiter: Limiter):
             )
             abort(403)
 
-        # Resolve slugified subpath into real path
         parts = subpath.split("/")
-        real_parts = []
-        current_dir = secure_path("")  # Start from MEDIA_ROOT
-        for slug in parts:
-            entries = list(os.listdir(current_dir))
-            for entry in entries:
-                if slugify(entry) == slug:
-                    real_parts.append(entry)
-                    current_dir = os.path.join(current_dir, entry)
-                    break
-            else:
-                abort(404)
-
-        real_path = os.path.join(secure_path(""), *real_parts)
+        real_path = resolve_real_path_from_slugs(parts)
 
         if os.path.isfile(real_path):
             return send_file(real_path)
 
         abort(404)
-
 
     # ERROR HANDLERS
     @app.errorhandler(429)

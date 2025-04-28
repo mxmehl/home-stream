@@ -134,7 +134,7 @@ def slugify(name: str) -> str:
     """Turn a filename into a URL-safe slug (preserving readability)"""
     name = name.strip()
     name = re.sub(r"[\s]+", "_", name)  # Replace spaces with underscores
-    name = re.sub(r"[^a-zA-Z0-9_\-\.]", "", name)  # Keep only safe characters
+    name = re.sub(r"[^a-zA-Z0-9_&\-\.]", "", name)  # Keep only safe characters
     return name
 
 
@@ -144,3 +144,64 @@ def deslugify(slug: str, directory: str) -> str:
         if slugify(fname) == slug:
             return fname
     raise FileNotFoundError(f"No match for slug '{slug}' in '{directory}'")
+
+
+def resolve_real_path_from_slugs(slug_parts):
+    """
+    Resolve a slugified URL path into the real filesystem path.
+
+    - Each part of the path (slug) is matched against actual filesystem entries.
+    - All intermediate parts must resolve to directories.
+    - The final part can resolve to either a file or a directory (depending on the route purpose).
+
+    Args:
+        slug_parts (list[str]): The slugified URL path segments
+            (e.g. ["Shows", "Battlestar_Galactica", "Season_1"]).
+
+    Returns:
+        str: The full real filesystem path.
+
+    Raises:
+        404 error if any slug part does not match a real filesystem entry.
+    """
+    current_dir = secure_path("")  # Start from the media root
+    real_parts = []
+
+    for idx, slug in enumerate(slug_parts):
+        entries = os.listdir(current_dir)
+        is_last = idx == len(slug_parts) - 1  # Final path segment?
+
+        for entry in entries:
+            full_entry = os.path.join(current_dir, entry)
+
+            if slugify(entry) == slug:
+                # Intermediate parts must be directories
+                # Last part can be either file or directory
+                if is_last or os.path.isdir(full_entry):
+                    real_parts.append(entry)
+                    current_dir = full_entry
+                    break
+        else:
+            # No match found for this slug part → abort
+            abort(404)
+
+    return os.path.join(secure_path(""), *real_parts)
+
+
+def list_folder_entries(real_path, slug_parts):
+    """List folders and files with correct slugified paths"""
+    folders, files = [], []
+    for entry in os.listdir(real_path):
+        full = os.path.join(real_path, entry)
+        entry_slug = slugify(entry)
+        if os.path.isdir(full) and not entry.startswith("."):
+            folder_slug_path = "/".join(slug_parts + [entry_slug])
+            folders.append((entry, folder_slug_path))
+        elif os.path.isfile(full):
+            ext = os.path.splitext(entry)[1].lower().strip(".")
+            if ext in current_app.config["MEDIA_EXTENSIONS"]:
+                file_slug_path = "/".join(slug_parts + [entry_slug])
+                files.append((entry, file_slug_path))
+    folders.sort(key=lambda x: x[0].lower())
+    files.sort(key=lambda x: x[0].lower())
+    return folders, files
