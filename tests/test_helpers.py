@@ -14,11 +14,13 @@ from flask import Flask, current_app, request
 
 from home_stream.helpers import (
     REQUIRED_CONFIG_KEYS,
+    deslugify,
     file_type,
     get_stream_token,
     get_version_info,
     load_config,
     secure_path,
+    slugify,
     truncate_secret,
     validate_user,
     verify_password,
@@ -190,3 +192,28 @@ def test_get_version_info_git_failure(app, monkeypatch):
     assert version_info.endswith(
         "(unknown commit)"
     ), f"Unexpected version info on git failure: {version_info}"
+
+
+def test_deslugify_success(tmp_path):
+    """deslugify should find and return the matching real filename"""
+    # Create a file with spaces
+    filename = "My Test File.mp3"
+    file_path = tmp_path / filename
+    file_path.write_text("dummy content")
+
+    # Lookup using slugified name
+    slug = slugify(filename)
+    found = deslugify(slug, str(tmp_path))
+
+    assert found == filename
+
+
+def test_deslugify_raises_file_not_found(tmp_path):
+    """deslugify should raise FileNotFoundError if no file matches the slug"""
+    # Empty directory -> no match possible
+    empty_dir = tmp_path
+
+    with pytest.raises(FileNotFoundError) as excinfo:
+        deslugify("nonexistent_slug", str(empty_dir))
+
+    assert "No match for slug" in str(excinfo.value)

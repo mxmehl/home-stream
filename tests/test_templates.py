@@ -4,13 +4,12 @@
 
 """Tests for the Home Stream HTML templates"""
 
-import os
 import re
 from urllib.parse import unquote
 
 from bs4 import BeautifulSoup
 
-from home_stream.helpers import get_stream_token, get_version_info
+from home_stream.helpers import get_version_info
 
 
 def test_login_form_has_fields(client):
@@ -38,11 +37,14 @@ def test_browse_page_shows_file_actions(client, app, media_file):  # pylint: dis
     assert any("Copy Stream URL" in label for label in labels)
 
 
-def test_play_page_embeds_media(client):
+def test_play_page_embeds_media(client, media_file_slugs):
     """Ensure /play/<file> renders the correct media tag"""
+    _, slugified_filename = media_file_slugs
+
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
-    response = client.get("/play/sample.mp3")
+
+    response = client.get(f"/play/{slugified_filename}")
     soup = BeautifulSoup(response.data, "html.parser")
     assert soup.find("audio") or soup.find("video")
 
@@ -67,26 +69,50 @@ def test_logout_button_hidden_when_not_logged_in(client):
     assert logout_form is None
 
 
-def test_play_page_has_correct_stream_url(client):
+def test_play_page_has_correct_stream_url(client, media_file_slugs, stream_token):
     """Ensure /play/<file> embeds the correct dl-token stream URL"""
-    test_file = "song.mp3"
+    _, slugified_filename = media_file_slugs
 
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
 
-    response = client.get(f"/play/{test_file}")
+    response = client.get(f"/play/{slugified_filename}")
     soup = BeautifulSoup(response.data, "html.parser")
     source_tag = soup.find("source")
     assert source_tag is not None
 
     stream_url = unquote(source_tag["src"])
-    expected_token = get_stream_token("testuser")
-    assert stream_url.startswith(f"/dl-token/testuser/{expected_token}/{test_file}")
+
+    assert stream_url.startswith(f"/dl-token/testuser/{stream_token}/")
 
 
-def test_browse_stream_url_copy_button(client, media_file):
+def test_play_page_stream_url_works(client, media_file_slugs, stream_token):
+    """Ensure the stream URL embedded in /play works when fetched."""
+    _, slugified_filename = media_file_slugs
+
+    with client.session_transaction() as sess:
+        sess["username"] = "testuser"
+
+    # Load the play page
+    response = client.get(f"/play/{slugified_filename}")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    source_tag = soup.find("source")
+    assert source_tag is not None
+
+    stream_url = unquote(source_tag["src"])
+
+    # Fetch the actual stream URL
+    stream_response = client.get(stream_url)
+    assert stream_token in stream_url
+    assert stream_response.status_code == 200
+    assert stream_response.data.startswith(b"ID3")
+
+
+def test_browse_stream_url_copy_button(client, media_file_slugs, stream_token):
     """Ensure the Copy Stream URL button includes full valid stream URL"""
-    filename = os.path.basename(media_file)
+    _, slugified_filename = media_file_slugs
 
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
@@ -104,8 +130,9 @@ def test_browse_stream_url_copy_button(client, media_file):
     assert match, "Stream URL not found in onclick"
 
     stream_url = unquote(match.group(1))
-    expected_token = get_stream_token("testuser")
-    assert stream_url.startswith(f"http://localhost/dl-token/testuser/{expected_token}/{filename}")
+    assert stream_url.startswith(
+        f"http://localhost/dl-token/testuser/{stream_token}/{slugified_filename}"
+    )
 
 
 def test_footer_version_displayed_when_logged_in(client):
