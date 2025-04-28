@@ -5,6 +5,7 @@
 """Tests for the Home Stream application helpers"""
 
 import os
+import re
 import tempfile
 
 import pytest
@@ -15,6 +16,7 @@ from home_stream.helpers import (
     REQUIRED_CONFIG_KEYS,
     file_type,
     get_stream_token,
+    get_version_info,
     load_config,
     secure_path,
     truncate_secret,
@@ -163,3 +165,28 @@ def test_verify_password_failure(app):
     with app.app_context():
         assert verify_password("unknown", "test") is None
         assert verify_password("testuser", "wrong") is None
+
+
+def test_get_version_info():
+    """Test that get_version_info returns the expected version format"""
+    version_info = get_version_info()
+
+    # Expect format like "0.4.3 (abc123)"
+    assert re.match(
+        r"^\d+\.\d+\.\d+ \([a-z0-9]+\)$", version_info
+    ), f"Unexpected version format: {version_info}"
+
+
+def test_get_version_info_git_failure(app, monkeypatch):
+    """Test that get_version_info handles git failure gracefully"""
+    # Simulate subprocess raising an exception
+    monkeypatch.setattr(
+        "subprocess.check_output", lambda cmd: (_ for _ in ()).throw(Exception("git error"))
+    )
+
+    with app.app_context():
+        version_info = get_version_info()
+
+    assert version_info.endswith(
+        "(unknown commit)"
+    ), f"Unexpected version info on git failure: {version_info}"
