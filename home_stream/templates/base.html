@@ -20,9 +20,9 @@
     </div>
     {%- endif %}
     <h1>{{ path or 'Overview' }}</h1>
-    {%- if path %}
-    {%- set parent = path.rsplit('/', 1)[0] if '/' in path else '' %}
-    <p><a href="{{ url_for('browse', subpath=parent) }}">⬅ One level up</a></p>
+    {%- if slugified_path %}
+      {%- set parent = slugified_path.rsplit('/', 1)[0] if '/' in slugified_path else '' %}
+      <p><a href="{{ url_for('browse', subpath=parent) }}">⬅ One level up</a></p>
     {%- endif %}
     {%- block content %}
     {%- endblock %}

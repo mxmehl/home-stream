@@ -25,11 +25,13 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
+    deslugify,
     file_type,
     get_stream_token,
     get_version_info,
     load_config,
     secure_path,
+    slugify,
     truncate_secret,
     validate_user,
 )
@@ -132,48 +134,93 @@ def init_routes(app: Flask, limiter: Limiter):
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
-        current_path = secure_path(subpath)
+        parts = subpath.split("/") if subpath else []
+        real_parts = []
+        current_dir = secure_path("")  # Start from media root
+
+        # Resolve each slug part to real folder name
+        for slug in parts:
+            entries = [
+                entry
+                for entry in os.listdir(current_dir)
+                if os.path.isdir(os.path.join(current_dir, entry))
+            ]
+            for entry in entries:
+                if slugify(entry) == slug:
+                    real_parts.append(entry)
+                    current_dir = os.path.join(current_dir, entry)
+                    break
+            else:
+                abort(404)  # No match found
+
+        current_path = os.path.join(secure_path(""), *real_parts)
+
         if not os.path.isdir(current_path):
             abort(404)
 
+        # Now generate full slug paths
         folders, files = [], []
         for entry in os.listdir(current_path):
             full = os.path.join(current_path, entry)
-            rel = os.path.join(subpath, entry)
+            entry_slug = slugify(entry)
             if os.path.isdir(full) and not entry.startswith("."):
-                folders.append((entry, rel))
+                folder_slug_path = "/".join(parts + [entry_slug])
+                folders.append((entry, folder_slug_path))
             elif os.path.isfile(full):
                 ext = os.path.splitext(entry)[1].lower().strip(".")
                 if ext in app.config["MEDIA_EXTENSIONS"]:
-                    files.append((entry, rel))
+                    file_slug_path = "/".join(parts + [entry_slug])
+                    files.append((entry, file_slug_path))
 
         folders.sort(key=lambda x: x[0].lower())
         files.sort(key=lambda x: x[0].lower())
 
+        # Prepare slugified path for the template
+        path_parts = parts  # parts already split slug segments
+        slugified_path = "/".join(path_parts) if parts else ""
+
         return render_template(
             "browse.html",
             path=subpath,
+            slugified_path=slugified_path,
             folders=folders,
             files=files,
             username=session.get("username"),
             protocol=app.config["PROTOCOL"],
         )
 
-    @app.route("/play/<path:filepath>")
-    def play(filepath):
+    @app.route("/play/<path:subpath>")
+    def play(subpath):
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
-        secure_path(filepath)
+        # Resolve slug path to real path
+        parts = subpath.split("/")
+        real_parts = []
+        current_dir = secure_path("")  # Start from root
+        for slug in parts:
+            real_name = deslugify(slug, current_dir)
+            real_parts.append(real_name)
+            current_dir = os.path.join(current_dir, real_name)
+
+        real_path = "/".join(real_parts)
+        secure_path(real_path)
+
+        # Prepare slugified path for play
+        path_parts = real_path.split("/")
+        slug_parts = [slugify(part) for part in path_parts]
+        slugified_path = "/".join(slug_parts)
+
         return render_template(
             "play.html",
-            path=filepath,
-            mediatype=file_type(filepath),
+            path=real_path,
+            slugified_path=slugified_path,
+            mediatype=file_type(real_path),
             username=session.get("username"),
         )
 
-    @app.route("/dl-token/<username>/<token>/<path:filepath>")
-    def download_token_auth(username, token, filepath):
+    @app.route("/dl-token/<username>/<token>/<path:subpath>")
+    def download_token_auth(username, token, subpath):
         expected = get_stream_token(username)
         if token != expected:
             app.logger.info(
@@ -181,10 +228,28 @@ def init_routes(app: Flask, limiter: Limiter):
                 f"Expected '{truncate_secret(expected)}', got '{token}'"
             )
             abort(403)
-        full_path = secure_path(filepath)
-        if os.path.isfile(full_path):
-            return send_file(full_path)
+
+        # Resolve slugified subpath into real path
+        parts = subpath.split("/")
+        real_parts = []
+        current_dir = secure_path("")  # Start from MEDIA_ROOT
+        for slug in parts:
+            entries = list(os.listdir(current_dir))
+            for entry in entries:
+                if slugify(entry) == slug:
+                    real_parts.append(entry)
+                    current_dir = os.path.join(current_dir, entry)
+                    break
+            else:
+                abort(404)
+
+        real_path = os.path.join(secure_path(""), *real_parts)
+
+        if os.path.isfile(real_path):
+            return send_file(real_path)
+
         abort(404)
+
 
     # ERROR HANDLERS
     @app.errorhandler(429)

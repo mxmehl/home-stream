@@ -7,6 +7,7 @@
 import hashlib
 import hmac
 import os
+import re
 import subprocess
 
 import yaml
@@ -127,3 +128,19 @@ def get_version_info():
         commit = "unknown commit"
 
     return f"{__version__} ({commit})"
+
+
+def slugify(name: str) -> str:
+    """Turn a filename into a URL-safe slug (preserving readability)"""
+    name = name.strip()
+    name = re.sub(r"[\s]+", "_", name)  # Replace spaces with underscores
+    name = re.sub(r"[^a-zA-Z0-9_\-\.]", "", name)  # Keep only safe characters
+    return name
+
+
+def deslugify(slug: str, directory: str) -> str:
+    """Find real filename in a directory matching the slug"""
+    for fname in os.listdir(directory):
+        if slugify(fname) == slug:
+            return fname
+    raise FileNotFoundError(f"No match for slug '{slug}' in '{directory}'")
