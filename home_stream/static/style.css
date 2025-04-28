@@ -9,10 +9,29 @@
   --pico-form-element-spacing-horizontal: 0.2rem;
 }
 
+main {
+  min-height: 84vh;
+}
+
+footer {
+  font-size: 0.9rem;
+}
+
 ul.files li {
   padding: 0.2rem 0;
 }
 
-audio, video {
+audio,
+video {
   width: 800px;
+}
+
+#user-info {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+
+  button {
+    font-size: 0.9rem;
+  }
 }
