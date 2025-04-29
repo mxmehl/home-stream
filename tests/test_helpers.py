@@ -19,6 +19,7 @@ from home_stream.helpers import (
     get_stream_token,
     get_version_info,
     load_config,
+    prepare_path_context,
     secure_path,
     slugify,
     truncate_secret,
@@ -217,3 +218,21 @@ def test_deslugify_raises_file_not_found(tmp_path):
         deslugify("nonexistent_slug", str(empty_dir))
 
     assert "No match for slug" in str(excinfo.value)
+
+
+def test_prepare_path_context_generates_breadcrumbs():
+    """Ensure prepare_path_context returns expected structure"""
+    real_path = "/media/data/Shows/Battlestar Galactica/Season 1"
+    slug_parts = ["Shows", "Battlestar_Galactica", "Season_1"]
+    media_root = "/media/data"
+
+    context = prepare_path_context(real_path, slug_parts, media_root)
+
+    assert context["slugified_path"] == "Shows/Battlestar_Galactica/Season_1"
+    assert context["display_path"] == "Shows/Battlestar Galactica/Season 1"
+    assert context["current_name"] == "Season 1"
+    assert context["breadcrumb_parts"] == [
+        {"name": "Overview", "slug": ""},
+        {"name": "Shows", "slug": "Shows"},
+        {"name": "Battlestar Galactica", "slug": "Shows/Battlestar_Galactica"},
+    ]

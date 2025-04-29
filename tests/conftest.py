@@ -65,10 +65,17 @@ def fixture_stream_token():
 
 @pytest.fixture(name="media_file")
 def fixture_media_file():
-    """Create a minimal valid MP3 file inside MEDIA_ROOT with spaces in filename"""
+    """
+    Create a minimal valid MP3 file inside MEDIA_ROOT with spaces in filename and parent directories
+    """
+
+    # Create a temporary directory with spaces for the media file
+    folder = "/tmp/test/with spaces"
+    os.makedirs(folder, exist_ok=True)
+
     # Example: 'sample testfile 12ab34cd56ef.mp3'
     filename = f"sample testfile {uuid.uuid4().hex[:8]}.mp3"
-    file_path = os.path.join("/tmp", filename)
+    file_path = os.path.join(folder, filename)
 
     with open(file_path, "wb") as f:
         f.write(MINIMAL_MP3)
@@ -78,8 +85,8 @@ def fixture_media_file():
 
 @pytest.fixture(name="media_file_slugs")
 def fixture_media_file_slugs(media_file):
-    """Provide both the real filename and its slugified version"""
-
-    filename = os.path.basename(media_file)
-    slugified_filename = slugify(filename)
-    return filename, slugified_filename
+    """Return both real filename and full slugified path including folders"""
+    rel_path = os.path.relpath(media_file, "/tmp")
+    parts = rel_path.split(os.sep)
+    slugified_parts = [slugify(p) for p in parts]
+    return os.path.basename(media_file), "/".join(slugified_parts)

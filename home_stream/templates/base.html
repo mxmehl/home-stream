@@ -19,11 +19,16 @@
       </form>
     </div>
     {%- endif %}
-    <h1>{{ display_path or 'Overview' }}</h1>
-    {%- if slugified_path %}
-      {%- set parent = slugified_path.rsplit('/', 1)[0] if '/' in slugified_path else '' %}
-      <p><a href="{{ url_for('browse', subpath=parent) }}">⬅ One level up</a></p>
-    {%- endif %}
+    <h1>{{ display_path }}</h1>
+
+    {% if breadcrumb_parts %}
+      <p class="breadcrumbs">📂
+        {% for crumb in breadcrumb_parts %}
+          <a href="{{ url_for('browse', subpath=crumb.slug) }}">{{ crumb.name }}</a>
+          {% if not loop.last %} / {% endif %}
+        {% endfor %}
+      </p>
+    {% endif %}
     {%- block content %}
     {%- endblock %}
   </main>

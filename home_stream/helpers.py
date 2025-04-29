@@ -205,3 +205,61 @@ def list_folder_entries(real_path, slug_parts):
     folders.sort(key=lambda x: x[0].lower())
     files.sort(key=lambda x: x[0].lower())
     return folders, files
+
+
+def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
+    """# pylint: disable=line-too-long
+    Construct context information for templates based on a resolved real path and its slug parts.
+
+    This includes:
+    - The current item's name (used as the headline)
+    - A slugified path (used in URLs)
+    - A relative display path from the media root
+    - A breadcrumb trail leading up to the current item
+
+    The breadcrumb list will always start with an "Overview" entry linking to the root.
+
+    Args:
+        real_path (str): The absolute filesystem path to the file or directory.
+        slug_parts (list): List of URL slug parts (e.g., ['Shows', 'Battlestar_Galactica']).
+        media_root (str): The absolute path to the media root directory.
+
+    Returns:
+        dict: {
+            "slugified_path": str,         # e.g., "Shows/Battlestar_Galactica"
+            "display_path": str,           # e.g., "Shows/Battlestar Galactica"
+            "breadcrumb_parts": List[dict],# e.g., [{"name": "Overview", "slug": ""}, # {"name": "Shows", "slug": "Shows"}]
+            "current_name": str            # e.g., "Battlestar Galactica"
+        }
+    """
+    # Join slugified parts back into a path string
+    slugified_path = "/".join(slug_parts) if slug_parts else ""
+
+    # Convert real path to relative path from the media root
+    display_path = os.path.relpath(real_path, media_root)
+
+    # Special case: media root itself
+    if display_path == ".":
+        display_parts = []
+    else:
+        display_parts = [p for p in display_path.strip("/").split("/") if p]
+
+    # Build breadcrumb from all parts except the last (shown as headline)
+    breadcrumb_parts = [
+        {"name": name, "slug": "/".join(slug_parts[: i + 1])}
+        for i, name in enumerate(display_parts[:-1])
+    ]
+
+    # Always include the Overview/root link
+    if breadcrumb_parts or display_parts:
+        breadcrumb_parts.insert(0, {"name": "Overview", "slug": ""})
+
+    # The last segment is shown as the <h1> headline
+    current_name = display_parts[-1] if display_parts else "Overview"
+
+    return {
+        "slugified_path": slugified_path,
+        "display_path": display_path,
+        "breadcrumb_parts": breadcrumb_parts,
+        "current_name": current_name,
+    }

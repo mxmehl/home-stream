@@ -30,6 +30,7 @@ from home_stream.helpers import (
     get_version_info,
     list_folder_entries,
     load_config,
+    prepare_path_context,
     resolve_real_path_from_slugs,
     truncate_secret,
     validate_user,
@@ -133,20 +134,21 @@ def init_routes(app: Flask, limiter: Limiter):
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
-        parts = subpath.split("/") if subpath else []
-
+        # Build real and slug paths and breadcrumbs
+        parts = [p for p in subpath.split("/") if p]
         real_path = resolve_real_path_from_slugs(parts)
+        path_context = prepare_path_context(real_path, parts, app.config["MEDIA_ROOT"])
+
         if not os.path.isdir(real_path):
             abort(404)
 
         folders, files = list_folder_entries(real_path, parts)
 
-        slugified_path = "/".join(parts) if parts else ""
-
         return render_template(
             "browse.html",
-            display_path=real_path.replace(app.config["MEDIA_ROOT"], ""),
-            slugified_path=slugified_path,
+            slugified_path=path_context["slugified_path"],
+            display_path=path_context["current_name"],
+            breadcrumb_parts=path_context["breadcrumb_parts"],
             folders=folders,
             files=files,
             username=session.get("username"),
@@ -158,19 +160,19 @@ def init_routes(app: Flask, limiter: Limiter):
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
+        # Build real and slug paths and breadcrumbs
         parts = subpath.split("/")
         real_path = resolve_real_path_from_slugs(parts)
+        path_context = prepare_path_context(real_path, parts, app.config["MEDIA_ROOT"])
 
         if not os.path.isfile(real_path):
             abort(404)
 
-        # slugified_path is simply the incoming slug parts joined back
-        slugified_path = "/".join(parts)
-
         return render_template(
             "play.html",
-            display_path=real_path.replace(app.config["MEDIA_ROOT"], ""),
-            slugified_path=slugified_path,
+            slugified_path=path_context["slugified_path"],
+            display_path=path_context["current_name"],
+            breadcrumb_parts=path_context["breadcrumb_parts"],
             mediatype=file_type(real_path),
             username=session.get("username"),
         )

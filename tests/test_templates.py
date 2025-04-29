@@ -27,7 +27,7 @@ def test_browse_page_shows_file_actions(client, app, media_file):  # pylint: dis
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
 
-    response = client.get("/browse/")
+    response = client.get("/browse/test/with_spaces/")
     soup = BeautifulSoup(response.data, "html.parser")
     buttons = soup.find_all("button")
     labels = [btn.get_text(strip=True) for btn in buttons]
@@ -117,7 +117,7 @@ def test_browse_stream_url_copy_button(client, media_file_slugs, stream_token):
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
 
-    response = client.get("/browse/")
+    response = client.get("/browse/test/with_spaces/")
     soup = BeautifulSoup(response.data, "html.parser")
     buttons = soup.find_all("button", string=lambda text: text and "Copy Stream URL" in text)
     assert buttons, "No Copy Stream URL button found"
@@ -158,3 +158,45 @@ def test_footer_version_hidden_when_not_logged_in(client):
     assert footer is not None, "Footer not found"
     assert "home-stream" in footer.text
     assert get_version_info() not in footer.text  # Version number appears
+
+
+def test_browse_page_shows_breadcrumbs(client):
+    """Ensure /browse/<subfolder> displays correct breadcrumbs and headline"""
+
+    with client.session_transaction() as sess:
+        sess["username"] = "testuser"
+
+    subpath = "test/with_spaces"
+    response = client.get(f"/browse/{subpath}")
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    breadcrumbs = soup.find("p", class_="breadcrumbs")
+    assert breadcrumbs is not None
+    assert "Overview" in breadcrumbs.text
+    assert "test" in breadcrumbs.text
+    # DO NOT expect "with spaces" inside breadcrumbs
+
+    headline = soup.find("h1")
+    assert headline is not None
+    assert "with spaces" in headline.text
+
+
+def test_play_page_shows_breadcrumbs(client, media_file_slugs):
+    """Ensure /play/<file> displays breadcrumbs"""
+    _, slugified_filename = media_file_slugs
+
+    with client.session_transaction() as sess:
+        sess["username"] = "testuser"
+
+    response = client.get(f"/play/{slugified_filename}")
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    breadcrumbs = soup.find("p", class_="breadcrumbs")
+    assert breadcrumbs is not None
+    assert "Overview" in breadcrumbs.text
+    assert "test" in breadcrumbs.text
+    assert "with spaces" in breadcrumbs.text
