@@ -236,3 +236,26 @@ def test_prepare_path_context_generates_breadcrumbs():
         {"name": "Shows", "slug": "Shows"},
         {"name": "Battlestar Galactica", "slug": "Shows/Battlestar_Galactica"},
     ]
+
+def test_stream_token_changes_when_password_changes(app):
+    """Ensure that changing the user's password results in a new stream token"""
+    with app.app_context():
+        users = current_app.config["USERS"]
+
+        # Original token
+        original_token = get_stream_token("testuser")
+
+        # Simulate password change
+        users["testuser"] = "new_fake_password_hash"
+
+        # New token after password change
+        new_token = get_stream_token("testuser")
+
+        assert original_token != new_token, "Stream token did not change after password update"
+
+
+def test_get_stream_token_raises_for_missing_user(app):
+    """Ensure get_stream_token raises ValueError if user does not exist"""
+    with app.app_context():
+        with pytest.raises(ValueError, match="User 'unknownuser' not found"):
+            get_stream_token("unknownuser")

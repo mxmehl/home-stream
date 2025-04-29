@@ -106,9 +106,16 @@ def validate_user(username, password):
 
 
 def get_stream_token(username: str, chars: int = 16) -> str:
-    """Generate a n-chars permanent token for streaming based on username and secret key."""
+    """Generate a permanent token for streaming based on username, password hash, and secret key"""
     secret = current_app.config["STREAM_SECRET"]
-    return hmac.new(secret.encode(), username.encode(), hashlib.sha256).hexdigest()[:chars]
+    users = current_app.config.get("USERS", {})
+
+    password_hash = users.get(username)
+    if not password_hash:
+        raise ValueError(f"User '{username}' not found when generating stream token.")
+
+    token_input = f"{username}:{password_hash}"
+    return hmac.new(secret.encode(), token_input.encode(), hashlib.sha256).hexdigest()[:chars]
 
 
 def truncate_secret(secret: str, chars: int = 8) -> str:
