@@ -118,6 +118,12 @@ def get_stream_token(username: str, chars: int = 16) -> str:
     return hmac.new(secret.encode(), token_input.encode(), hashlib.sha256).hexdigest()[:chars]
 
 
+def compute_session_signature(username, password_hash, secret):
+    """Compute a session signature based on username and password hash."""
+    data = f"{username}:{password_hash}"
+    return hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
+
+
 def truncate_secret(secret: str, chars: int = 8) -> str:
     """Truncate the secret key to a specified length"""
     if len(secret) > chars:

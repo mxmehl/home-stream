@@ -25,6 +25,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
+    compute_session_signature,
     file_type,
     get_stream_token,
     get_version_info,
@@ -92,7 +93,17 @@ def init_routes(app: Flask, limiter: Limiter):
         }
 
     def is_authenticated():
-        return session.get("username") in app.config["USERS"]
+        """Check if the current session matches a valid user and password hash"""
+        username = session.get("username")
+        auth_signature = session.get("auth_signature")
+        users = app.config.get("USERS", {})
+        secret = app.config["STREAM_SECRET"]
+
+        if username not in users:
+            return False
+
+        expected_signature = compute_session_signature(username, users[username], secret)
+        return auth_signature == expected_signature
 
     @app.route("/login", methods=["GET", "POST"])
     @limiter.limit("2 per 10 seconds")
@@ -108,6 +119,9 @@ def init_routes(app: Flask, limiter: Limiter):
                 )
                 session.clear()
                 session["username"] = username
+                session["auth_signature"] = compute_session_signature(
+                    username, app.config["USERS"][username], app.config["STREAM_SECRET"]
+                )
                 return redirect(request.args.get("next") or url_for("index"))
 
             app.logger.warning(f"Login failed for user '{username}' from IP {request.remote_addr}")
