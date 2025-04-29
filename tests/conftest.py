@@ -13,7 +13,7 @@ import pytest
 import yaml
 
 from home_stream.app import create_app
-from home_stream.helpers import get_stream_token, slugify
+from home_stream.helpers import compute_session_signature, get_stream_token, slugify
 
 MINIMAL_MP3 = bytes.fromhex(
     "494433030000000021764c414d4533322e39372e39000000"  # ID3 header for metadata
@@ -55,6 +55,16 @@ def fixture_app(config_file):
 def fixture_client(app):
     """Create a test client for the app"""
     return app.test_client()
+
+
+def login_session(sess, app, username="testuser"):
+    """Helper to simulate a logged-in user inside a test session."""
+    with app.app_context():
+        users = app.config["USERS"]
+        secret = app.config["STREAM_SECRET"]
+
+        sess["username"] = username
+        sess["auth_signature"] = compute_session_signature(username, users[username], secret)
 
 
 @pytest.fixture(name="stream_token")
