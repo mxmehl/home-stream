@@ -6,8 +6,6 @@
 
 import os
 
-from home_stream.helpers import get_stream_token
-
 
 def test_login_page_loads(client):
     """Test that the login page loads correctly"""
@@ -96,11 +94,14 @@ def test_browse_existing_subdir(client, app):
     assert b"subfolder" in response.data
 
 
-def test_play_route_works(client):
+def test_play_route_works(client, media_file_slugs):
     """Test that the /play/<filepath> route renders successfully when logged in"""
+    _, slugified_filename = media_file_slugs
+
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
-    response = client.get("/play/fakefile.mp3")
+
+    response = client.get(f"/play/{slugified_filename}")
     assert response.status_code == 200
     assert b"Player" in response.data
 
@@ -113,28 +114,26 @@ def test_dl_token_for_invalid_token_returns_403(client):
     assert response.status_code == 403
 
 
-def test_dl_token_valid_file_served(client, media_file):
+def test_dl_token_valid_file_served(client, media_file_slugs, stream_token):
     """Ensure /dl-token with valid token returns a real MP3 file"""
-    filename = os.path.basename(media_file)
+    _, slugified_filename = media_file_slugs
 
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
-    token = get_stream_token("testuser")
 
-    url = f"/dl-token/testuser/{token}/{filename}"
+    url = f"/dl-token/testuser/{stream_token}/{slugified_filename}"
     response = client.get(url)
 
     assert response.status_code == 200
     assert response.data.startswith(b"ID3")
 
 
-def test_dl_token_valid_but_file_missing(client):
+def test_dl_token_valid_but_file_missing(client, stream_token):
     """Return 404 if file is missing even with valid token."""
     filename = "ghost.mp3"
     with client.session_transaction() as sess:
         sess["username"] = "testuser"
-    token = get_stream_token("testuser")
 
-    url = f"/dl-token/testuser/{token}/{filename}"
+    url = f"/dl-token/testuser/{stream_token}/{filename}"
     response = client.get(url)
     assert response.status_code == 404

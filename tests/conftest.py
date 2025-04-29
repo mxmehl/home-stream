@@ -6,12 +6,14 @@
 
 import os
 import tempfile
+import uuid
 
 import bcrypt
 import pytest
 import yaml
 
 from home_stream.app import create_app
+from home_stream.helpers import get_stream_token, slugify
 
 MINIMAL_MP3 = bytes.fromhex(
     "494433030000000021764c414d4533322e39372e39000000"  # ID3 header for metadata
@@ -55,11 +57,36 @@ def fixture_client(app):
     return app.test_client()
 
 
+@pytest.fixture(name="stream_token")
+def fixture_stream_token():
+    """Get the default stream token for 'testuser'"""
+    return get_stream_token("testuser")
+
+
 @pytest.fixture(name="media_file")
 def fixture_media_file():
-    """Create a minimal valid MP3 file inside MEDIA_ROOT."""
-    file_path = "/tmp/sample.mp3"
+    """
+    Create a minimal valid MP3 file inside MEDIA_ROOT with spaces in filename and parent directories
+    """
+
+    # Create a temporary directory with spaces for the media file
+    folder = "/tmp/test/with spaces"
+    os.makedirs(folder, exist_ok=True)
+
+    # Example: 'sample testfile 12ab34cd56ef.mp3'
+    filename = f"sample testfile {uuid.uuid4().hex[:8]}.mp3"
+    file_path = os.path.join(folder, filename)
+
     with open(file_path, "wb") as f:
         f.write(MINIMAL_MP3)
     yield file_path
     os.remove(file_path)
+
+
+@pytest.fixture(name="media_file_slugs")
+def fixture_media_file_slugs(media_file):
+    """Return both real filename and full slugified path including folders"""
+    rel_path = os.path.relpath(media_file, "/tmp")
+    parts = rel_path.split(os.sep)
+    slugified_parts = [slugify(p) for p in parts]
+    return os.path.basename(media_file), "/".join(slugified_parts)

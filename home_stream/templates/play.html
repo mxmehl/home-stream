@@ -3,7 +3,7 @@
 {% block content %}
 <h2>Player</h2>
 {#- Create urlencoded stream URL based on user-individual token and path #}
-{%- set stream_path = ('dl-token', username, stream_token, path) | join("/") | urlencode %}
+{%- set stream_path = ['dl-token', username, stream_token, slugified_path] | join("/") %}
 <{{ mediatype }} controls autoplay preload>
   <source src="/{{ stream_path }}">
   Your browser does not support the video tag.

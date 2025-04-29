@@ -28,8 +28,10 @@ from home_stream.helpers import (
     file_type,
     get_stream_token,
     get_version_info,
+    list_folder_entries,
     load_config,
-    secure_path,
+    prepare_path_context,
+    resolve_real_path_from_slugs,
     truncate_secret,
     validate_user,
 )
@@ -132,48 +134,51 @@ def init_routes(app: Flask, limiter: Limiter):
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
-        current_path = secure_path(subpath)
-        if not os.path.isdir(current_path):
+        # Build real and slug paths and breadcrumbs
+        parts = [p for p in subpath.split("/") if p]
+        real_path = resolve_real_path_from_slugs(parts)
+        path_context = prepare_path_context(real_path, parts, app.config["MEDIA_ROOT"])
+
+        if not os.path.isdir(real_path):
             abort(404)
 
-        folders, files = [], []
-        for entry in os.listdir(current_path):
-            full = os.path.join(current_path, entry)
-            rel = os.path.join(subpath, entry)
-            if os.path.isdir(full) and not entry.startswith("."):
-                folders.append((entry, rel))
-            elif os.path.isfile(full):
-                ext = os.path.splitext(entry)[1].lower().strip(".")
-                if ext in app.config["MEDIA_EXTENSIONS"]:
-                    files.append((entry, rel))
-
-        folders.sort(key=lambda x: x[0].lower())
-        files.sort(key=lambda x: x[0].lower())
+        folders, files = list_folder_entries(real_path, parts)
 
         return render_template(
             "browse.html",
-            path=subpath,
+            slugified_path=path_context["slugified_path"],
+            display_path=path_context["current_name"],
+            breadcrumb_parts=path_context["breadcrumb_parts"],
             folders=folders,
             files=files,
             username=session.get("username"),
             protocol=app.config["PROTOCOL"],
         )
 
-    @app.route("/play/<path:filepath>")
-    def play(filepath):
+    @app.route("/play/<path:subpath>")
+    def play(subpath):
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
-        secure_path(filepath)
+        # Build real and slug paths and breadcrumbs
+        parts = subpath.split("/")
+        real_path = resolve_real_path_from_slugs(parts)
+        path_context = prepare_path_context(real_path, parts, app.config["MEDIA_ROOT"])
+
+        if not os.path.isfile(real_path):
+            abort(404)
+
         return render_template(
             "play.html",
-            path=filepath,
-            mediatype=file_type(filepath),
+            slugified_path=path_context["slugified_path"],
+            display_path=path_context["current_name"],
+            breadcrumb_parts=path_context["breadcrumb_parts"],
+            mediatype=file_type(real_path),
             username=session.get("username"),
         )
 
-    @app.route("/dl-token/<username>/<token>/<path:filepath>")
-    def download_token_auth(username, token, filepath):
+    @app.route("/dl-token/<username>/<token>/<path:subpath>")
+    def download_token_auth(username, token, subpath):
         expected = get_stream_token(username)
         if token != expected:
             app.logger.info(
@@ -181,9 +186,13 @@ def init_routes(app: Flask, limiter: Limiter):
                 f"Expected '{truncate_secret(expected)}', got '{token}'"
             )
             abort(403)
-        full_path = secure_path(filepath)
-        if os.path.isfile(full_path):
-            return send_file(full_path)
+
+        parts = subpath.split("/")
+        real_path = resolve_real_path_from_slugs(parts)
+
+        if os.path.isfile(real_path):
+            return send_file(real_path)
+
         abort(404)
 
     # ERROR HANDLERS
