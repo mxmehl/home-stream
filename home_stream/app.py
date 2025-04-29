@@ -145,7 +145,7 @@ def init_routes(app: Flask, limiter: Limiter):
 
         return render_template(
             "browse.html",
-            path=subpath,
+            display_path=real_path.replace(app.config["MEDIA_ROOT"], ""),
             slugified_path=slugified_path,
             folders=folders,
             files=files,
@@ -169,7 +169,7 @@ def init_routes(app: Flask, limiter: Limiter):
 
         return render_template(
             "play.html",
-            path=subpath,
+            display_path=real_path.replace(app.config["MEDIA_ROOT"], ""),
             slugified_path=slugified_path,
             mediatype=file_type(real_path),
             username=session.get("username"),
