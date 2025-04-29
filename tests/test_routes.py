@@ -6,6 +6,8 @@
 
 import os
 
+from tests.conftest import login_session
+
 
 def test_login_page_loads(client):
     """Test that the login page loads correctly"""
@@ -46,10 +48,11 @@ def test_login_rate_limit(client):
     assert b"Too many login attempts" in response.data
 
 
-def test_index_redirects_to_browse_when_logged_in(client):
+def test_index_redirects_to_browse_when_logged_in(client, app):
     """Ensure / redirects to /browse/ for logged-in users"""
     with client.session_transaction() as sess:
-        sess["username"] = "testuser"
+        login_session(sess, app)
+
     response = client.get("/", follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/browse/")
@@ -62,19 +65,20 @@ def test_index_redirects_when_not_logged_in(client):
     assert "/login" in response.headers["Location"]
 
 
-def test_404_on_invalid_browse_path(app):
+def test_404_on_invalid_browse_path(client, app):
     """Test that a 404 error is returned for an invalid browse path"""
-    with app.test_client() as c:
-        with c.session_transaction() as sess:
-            sess["username"] = "testuser"
-        response = c.get("/browse/invalidpath")
-        assert response.status_code == 404
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get("/browse/non_existent_folder")
+    assert response.status_code == 404
 
 
-def test_browse_root_shows_page(client):
+def test_browse_root_shows_page(client, app):
     """Access the root browse page when authenticated"""
     with client.session_transaction() as sess:
-        sess["username"] = "testuser"
+        login_session(sess, app)
+
     response = client.get("/browse/")
     assert response.status_code == 200
     assert b"Folders" in response.data or b"Media Files" in response.data
@@ -82,58 +86,59 @@ def test_browse_root_shows_page(client):
 
 def test_browse_existing_subdir(client, app):
     """Create a subfolder and confirm it shows up in browse view"""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
     media_root = app.config["MEDIA_ROOT"]
     subdir = os.path.join(media_root, "subfolder")
     os.makedirs(subdir, exist_ok=True)
-
-    with client.session_transaction() as sess:
-        sess["username"] = "testuser"
 
     response = client.get("/browse/subfolder")
     assert response.status_code == 200
     assert b"subfolder" in response.data
 
 
-def test_play_route_works(client, media_file_slugs):
+def test_play_route_works(client, app, media_file_slugs):
     """Test that the /play/<filepath> route renders successfully when logged in"""
-    _, slugified_filename = media_file_slugs
-
     with client.session_transaction() as sess:
-        sess["username"] = "testuser"
+        login_session(sess, app)
+
+    _, slugified_filename = media_file_slugs
 
     response = client.get(f"/play/{slugified_filename}")
     assert response.status_code == 200
     assert b"Player" in response.data
 
 
-def test_dl_token_for_invalid_token_returns_403(client):
+def test_dl_token_for_invalid_token_returns_403(client, app):
     """Ensure /dl-token route returns 403 for invalid tokens"""
     with client.session_transaction() as sess:
-        sess["username"] = "testuser"
+        login_session(sess, app)
+
     response = client.get("/dl-token/testuser/badtoken/somefile.mp3")
     assert response.status_code == 403
 
 
-def test_dl_token_valid_file_served(client, media_file_slugs, stream_token):
+def test_dl_token_valid_file_served(client, app, media_file_slugs, stream_token):
     """Ensure /dl-token with valid token returns a real MP3 file"""
-    _, slugified_filename = media_file_slugs
-
     with client.session_transaction() as sess:
-        sess["username"] = "testuser"
+        login_session(sess, app)
 
+    _, slugified_filename = media_file_slugs
     url = f"/dl-token/testuser/{stream_token}/{slugified_filename}"
+
     response = client.get(url)
 
     assert response.status_code == 200
     assert response.data.startswith(b"ID3")
 
 
-def test_dl_token_valid_but_file_missing(client, stream_token):
+def test_dl_token_valid_but_file_missing(client, app, stream_token):
     """Return 404 if file is missing even with valid token."""
-    filename = "ghost.mp3"
     with client.session_transaction() as sess:
-        sess["username"] = "testuser"
+        login_session(sess, app)
 
+    filename = "ghost.mp3"
     url = f"/dl-token/testuser/{stream_token}/{filename}"
     response = client.get(url)
     assert response.status_code == 404

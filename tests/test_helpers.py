@@ -14,6 +14,7 @@ from flask import Flask, current_app, request
 
 from home_stream.helpers import (
     REQUIRED_CONFIG_KEYS,
+    compute_session_signature,
     deslugify,
     file_type,
     get_stream_token,
@@ -237,6 +238,7 @@ def test_prepare_path_context_generates_breadcrumbs():
         {"name": "Battlestar Galactica", "slug": "Shows/Battlestar_Galactica"},
     ]
 
+
 def test_stream_token_changes_when_password_changes(app):
     """Ensure that changing the user's password results in a new stream token"""
     with app.app_context():
@@ -259,3 +261,28 @@ def test_get_stream_token_raises_for_missing_user(app):
     with app.app_context():
         with pytest.raises(ValueError, match="User 'unknownuser' not found"):
             get_stream_token("unknownuser")
+
+
+def test_compute_session_signature_changes_on_password_change():
+    """Ensure that session signature changes when the password hash changes."""
+    username = "testuser"
+    secret = "testsecret"
+    password_hash_old = "old_fake_hash"
+    password_hash_new = "new_fake_hash"
+
+    sig_old = compute_session_signature(username, password_hash_old, secret)
+    sig_new = compute_session_signature(username, password_hash_new, secret)
+
+    assert sig_old != sig_new, "Session signature did not change after password update"
+
+
+def test_compute_session_signature_consistency():
+    """Ensure the same inputs produce the same session signature."""
+    username = "testuser"
+    password_hash = "some_hash"
+    secret = "testsecret"
+
+    sig1 = compute_session_signature(username, password_hash, secret)
+    sig2 = compute_session_signature(username, password_hash, secret)
+
+    assert sig1 == sig2, "Session signature is not deterministic"
