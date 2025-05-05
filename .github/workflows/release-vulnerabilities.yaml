@@ -13,7 +13,3 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: mxmehl/latest-release-vulnerability-status@v1
-        with:
-          repository: mxmehl/home-stream
-          # tag-source: git-tag  # Optional, defaults to release-api
-        # continue-on-error: true  # Optional: ignore scan failures (e.g. if vulnerabilities are found)
