@@ -10,6 +10,7 @@ import os
 
 from flask import (
     Flask,
+    Response,
     abort,
     redirect,
     render_template,
@@ -25,6 +26,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
+    build_playlist_content,
     build_stream_url,
     compute_session_signature,
     extract_path_components,
@@ -33,7 +35,6 @@ from home_stream.helpers import (
     get_version_info,
     list_folder_entries_with_stream_urls,
     load_config,
-    resolve_real_path_from_slugs,
     truncate_secret,
     validate_user,
 )
@@ -82,7 +83,7 @@ def create_app(config_path: str, debug: bool = False) -> Flask:
     return app
 
 
-def init_routes(app: Flask, limiter: Limiter):
+def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-statements
     """Initialize routes for the Flask application."""
 
     # Inject variables into templates
@@ -162,6 +163,13 @@ def init_routes(app: Flask, limiter: Limiter):
             username=session.get("username"),
         )
 
+        # Create a tokenised playlist URL
+        playlist_stream_url = build_stream_url(
+            username=session.get("username"),
+            token=get_stream_token(session["username"]),
+            rel_path=subpath,
+        )
+
         return render_template(
             "browse.html",
             slugified_path=path_context["slugified_path"],
@@ -169,6 +177,7 @@ def init_routes(app: Flask, limiter: Limiter):
             breadcrumb_parts=path_context["breadcrumb_parts"],
             folders=folders,
             files=files,
+            playlist_stream_url=playlist_stream_url,
         )
 
     @app.route("/play/<path:subpath>")
@@ -206,11 +215,33 @@ def init_routes(app: Flask, limiter: Limiter):
             )
             abort(403)
 
-        parts = subpath.split("/")
-        real_path = resolve_real_path_from_slugs(parts)
+        # Build real and slug paths and breadcrumbs
+        parts, real_path, _ = extract_path_components(subpath)
 
+        # If the path is a file, send it (download)
         if os.path.isfile(real_path):
             return send_file(real_path)
+
+        # If the path is a folder, create a M3U8 playlist containing all stream URLs of the
+        # contained files
+        if os.path.isdir(real_path):
+            # Create a list of folders and files
+            _, files = list_folder_entries_with_stream_urls(
+                real_path=real_path,
+                slug_parts=parts,
+                username=username,
+            )
+
+            playlist_content = build_playlist_content(playlist_name=subpath, files=files)
+
+            return Response(
+                playlist_content,
+                mimetype="audio/mpegurl",
+                headers={
+                    "Content-Disposition": f"attachment; filename={subpath}.m3u8",
+                    "Content-Type": "audio/mpegurl",
+                },
+            )
 
         abort(404)
 

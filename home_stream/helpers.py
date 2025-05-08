@@ -274,7 +274,7 @@ def list_folder_entries_with_stream_urls(
 
 
 def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
-    """# pylint: disable=line-too-long
+    """
     Construct context information for templates based on a resolved real path and its slug parts.
 
     This includes:
@@ -297,7 +297,7 @@ def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
             "breadcrumb_parts": List[dict],# e.g., [{"name": "Overview", "slug": ""}, # {"name": "Shows", "slug": "Shows"}]
             "current_name": str            # e.g., "Battlestar Galactica"
         }
-    """
+    """  # pylint: disable=line-too-long
     # Join slugified parts back into a path string
     slugified_path = "/".join(slug_parts) if slug_parts else ""
 
@@ -346,3 +346,16 @@ def build_stream_url(username: str, token: str, rel_path: str) -> str:
     protocol = current_app.config["PROTOCOL"]
     host = request.host
     return f"{protocol}://{host}/dl-token/{quote(username)}/{token}/{quote(rel_path)}"
+
+
+def build_playlist_content(playlist_name: str, files: list[dict[str, str]]) -> str:
+    """Build a playlist content string for M3U8 format."""
+    playlist_lines = ["#EXTM3U"]
+    playlist_lines.append(f"#PLAYLIST: {playlist_name}")
+    for file in files:
+        playlist_lines.append(
+            # TODO: Add duration of file
+            f"#EXTINF:-1,{file.get('name', '')}"  # NOTE: -1 means unknown duration
+        )
+        playlist_lines.append(file.get("stream_url", ""))
+    return "\n".join(playlist_lines)
