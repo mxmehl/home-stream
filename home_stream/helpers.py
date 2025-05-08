@@ -201,22 +201,49 @@ def resolve_real_path_from_slugs(slug_parts):
     return os.path.join(secure_path(""), *real_parts)
 
 
-def list_folder_entries(real_path, slug_parts):
-    """List folders and files with correct slugified paths"""
-    folders, files = [], []
-    for entry in os.listdir(real_path):
-        full = os.path.join(real_path, entry)
-        entry_slug = slugify(entry)
-        if os.path.isdir(full) and not entry.startswith("."):
+def list_folder_entries(
+    real_path: str, slug_parts: list[str]
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """List directories and media files in a folder with slugified paths.
+
+    This function scans the given directory, filters out hidden folders,
+    and includes only files with allowed media extensions as defined in
+    the Flask app's config. It returns both folders and files with their
+    original names and corresponding slugified paths.
+
+    Args:
+        real_path (str): Absolute path to the folder to be listed.
+        slug_parts (list[str]): List of slug parts to prefix to each entry's slug.
+
+    Returns:
+        tuple: A tuple containing two lists:
+            - list of tuples (folder_name, slug_path)
+            - list of tuples (file_name, slug_path)
+    """
+    folders: list[tuple[str, str]] = []
+    files: list[tuple[str, str]] = []
+
+    # Loop through all entries in the directory
+    for dir_element in os.listdir(real_path):
+        full = os.path.join(real_path, dir_element)
+        entry_slug = slugify(dir_element)
+
+        # Check if entry is a directory and not hidden
+        if os.path.isdir(full) and not dir_element.startswith("."):
             folder_slug_path = "/".join(slug_parts + [entry_slug])
-            folders.append((entry, folder_slug_path))
+            folders.append((dir_element, folder_slug_path))
+
+        # Check if entry is a file with a valid media extension
         elif os.path.isfile(full):
-            ext = os.path.splitext(entry)[1].lower().strip(".")
+            ext = os.path.splitext(dir_element)[1].lower().strip(".")
             if ext in current_app.config["MEDIA_EXTENSIONS"]:
                 file_slug_path = "/".join(slug_parts + [entry_slug])
-                files.append((entry, file_slug_path))
+                files.append((dir_element, file_slug_path))
+
+    # Sort entries alphabetically by name (case-insensitive)
     folders.sort(key=lambda x: x[0].lower())
     files.sort(key=lambda x: x[0].lower())
+
     return folders, files
 
 
