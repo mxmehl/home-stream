@@ -84,7 +84,7 @@ def test_play_page_has_correct_stream_url(client, app, media_file_slugs, stream_
 
     stream_url = unquote(source_tag["src"])
 
-    assert stream_url.startswith(f"/dl-token/testuser/{stream_token}/")
+    assert stream_url.startswith(f"http://localhost/dl-token/testuser/{stream_token}/")
 
 
 def test_play_page_stream_url_works(client, app, media_file_slugs, stream_token):

@@ -12,14 +12,11 @@
 {% if files %}
 <h2>Media Files</h2>
 <ul class="files">
-  {%- for name, rel in files %}
-  {#- Create urlencoded stream URL based on user-individual token and path #}
-  {%- set stream_path = ('dl-token', username, stream_token, rel) | join("/") | urlencode %}
-  {%- set stream_url = protocol + '://' + request.host + '/' + stream_path %}
+  {%- for name, slug_path, stream_url in files %}
   <li>
     {{ name }} —
     <a href="{{ stream_url }}" target="_blank"><button>💾 Download</button></a>
-    <a href="{{ url_for('play', subpath=rel) }}"><button>🎬 Play in browser</button></a>
+    <a href="{{ url_for('play', subpath=slug_path) }}"><button>🎬 Play in browser</button></a>
     <button onclick="copyToClipboard('{{ stream_url }}', this)">
       ▶️ Copy Stream URL
     </button>

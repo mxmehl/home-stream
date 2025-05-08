@@ -9,6 +9,7 @@ import hmac
 import os
 import re
 import subprocess
+from urllib.parse import quote
 
 import yaml
 from bcrypt import checkpw
@@ -201,9 +202,9 @@ def resolve_real_path_from_slugs(slug_parts):
     return os.path.join(secure_path(""), *real_parts)
 
 
-def list_folder_entries(
-    real_path: str, slug_parts: list[str]
-) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+def list_folder_entries_with_stream_urls(
+    real_path: str, slug_parts: list[str], username: str
+) -> tuple[list[tuple[str, str]], list[tuple[str, str, str]]]:
     """List directories and media files in a folder with slugified paths.
 
     This function scans the given directory, filters out hidden folders,
@@ -214,14 +215,15 @@ def list_folder_entries(
     Args:
         real_path (str): Absolute path to the folder to be listed.
         slug_parts (list[str]): List of slug parts to prefix to each entry's slug.
+        username (str): Authenticated user.
 
     Returns:
         tuple: A tuple containing two lists:
             - list of tuples (folder_name, slug_path)
-            - list of tuples (file_name, slug_path)
+            - list of tuples (file_name, slug_path, stream_url)
     """
     folders: list[tuple[str, str]] = []
-    files: list[tuple[str, str]] = []
+    files: list[tuple[str, str, str]] = []
 
     # Loop through all entries in the directory
     for dir_element in os.listdir(real_path):
@@ -238,7 +240,8 @@ def list_folder_entries(
             ext = os.path.splitext(dir_element)[1].lower().strip(".")
             if ext in current_app.config["MEDIA_EXTENSIONS"]:
                 file_slug_path = "/".join(slug_parts + [entry_slug])
-                files.append((dir_element, file_slug_path))
+                stream_url = build_stream_url(username, get_stream_token(username), file_slug_path)
+                files.append((dir_element, file_slug_path, stream_url))
 
     # Sort entries alphabetically by name (case-insensitive)
     folders.sort(key=lambda x: x[0].lower())
@@ -303,3 +306,20 @@ def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
         "breadcrumb_parts": breadcrumb_parts,
         "current_name": current_name,
     }
+
+
+def build_stream_url(username: str, token: str, rel_path: str) -> str:
+    """
+    Build a full stream URL for a given user and relative file path.
+
+    Args:
+        username (str): Authenticated user
+        token (str): Token generated via get_stream_token()
+        rel_path (str): Slugified relative path (e.g. Music/HipHop/Track.mp3)
+
+    Returns:
+        str: Full stream URL
+    """
+    protocol = current_app.config["PROTOCOL"]
+    host = request.host
+    return f"{protocol}://{host}/dl-token/{quote(username)}/{token}/{quote(rel_path)}"

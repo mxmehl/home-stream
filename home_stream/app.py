@@ -25,11 +25,12 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
+    build_stream_url,
     compute_session_signature,
     file_type,
     get_stream_token,
     get_version_info,
-    list_folder_entries,
+    list_folder_entries_with_stream_urls,
     load_config,
     prepare_path_context,
     resolve_real_path_from_slugs,
@@ -156,7 +157,12 @@ def init_routes(app: Flask, limiter: Limiter):
         if not os.path.isdir(real_path):
             abort(404)
 
-        folders, files = list_folder_entries(real_path, parts)
+        # Create a list of folders and files
+        folders, files = list_folder_entries_with_stream_urls(
+            real_path=real_path,
+            slug_parts=parts,
+            username=session.get("username"),
+        )
 
         return render_template(
             "browse.html",
@@ -165,8 +171,6 @@ def init_routes(app: Flask, limiter: Limiter):
             breadcrumb_parts=path_context["breadcrumb_parts"],
             folders=folders,
             files=files,
-            username=session.get("username"),
-            protocol=app.config["PROTOCOL"],
         )
 
     @app.route("/play/<path:subpath>")
@@ -182,13 +186,18 @@ def init_routes(app: Flask, limiter: Limiter):
         if not os.path.isfile(real_path):
             abort(404)
 
+        # Build Stream URL
+        username = session.get("username")
+        token = get_stream_token(username)
+        stream_url = build_stream_url(username, token, "/".join(parts))
+
         return render_template(
             "play.html",
             slugified_path=path_context["slugified_path"],
             display_path=path_context["current_name"],
             breadcrumb_parts=path_context["breadcrumb_parts"],
             mediatype=file_type(real_path),
-            username=session.get("username"),
+            stream_url=stream_url,
         )
 
     @app.route("/dl-token/<username>/<token>/<path:subpath>")
