@@ -185,25 +185,47 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
-        # Build real and slug paths and breadcrumbs
+        # Extract parts, real path, and context
         parts, real_path, path_context = extract_path_components(subpath)
 
-        if not os.path.isfile(real_path):
-            abort(404)
-
-        # Build Stream URL
         username = session.get("username")
         token = get_stream_token(username)
-        stream_url = build_stream_url(username, token, "/".join(parts))
 
-        return render_template(
-            "play.html",
-            slugified_path=path_context["slugified_path"],
-            display_path=path_context["current_name"],
-            breadcrumb_parts=path_context["breadcrumb_parts"],
-            mediatype=file_type(real_path),
-            stream_url=stream_url,
-        )
+        # Case: path is single media file, please it
+        if os.path.isfile(real_path):
+            stream_url = build_stream_url(username, token, "/".join(parts))
+            return render_template(
+                "play.html",
+                slugified_path=path_context["slugified_path"],
+                display_path=path_context["current_name"],
+                breadcrumb_parts=path_context["breadcrumb_parts"],
+                mediatype=file_type(real_path),
+                stream_url=stream_url,
+                is_playlist=False,
+            )
+
+        # Case: path is folder, play all contained media files
+        if os.path.isdir(real_path):
+            _, files = list_folder_entries_with_stream_urls(
+                real_path=real_path,
+                slug_parts=parts,
+                username=username,
+            )
+            mediatype = (
+                "audio" if all(file_type(f.get("name", "")) == "audio" for f in files) else "video"
+            )
+
+            return render_template(
+                "play.html",
+                slugified_path=path_context["slugified_path"],
+                display_path=path_context["current_name"],
+                breadcrumb_parts=path_context["breadcrumb_parts"],
+                files=files,
+                mediatype=mediatype,
+                is_playlist=True,
+            )
+
+        abort(404)
 
     @app.route("/dl-token/<username>/<token>/<path:subpath>")
     def download_token_auth(username, token, subpath):

@@ -27,7 +27,7 @@
 <h2>Play All Files</h2>
 <p>
   <a href="{{ playlist_stream_url }}" target="_blank"><button>💾 Download playlist</button></a>
-  <a href="{{ url_for('play', subpath=foo) }}" target="_blank"><button>🎬 Play all files in browser</button></a>
+  <a href="{{ url_for('play', subpath=slugified_path) }}"><button>🎬 Play all files in browser</button></a>
   <button onclick="copyToClipboard('{{ playlist_stream_url }}', this)">
     ▶️ Copy Stream URL for playlist
   </button>
