@@ -5,6 +5,7 @@
 """Tests for the Home Stream HTML templates"""
 
 import re
+from os.path import dirname
 from urllib.parse import unquote
 
 from bs4 import BeautifulSoup
@@ -161,13 +162,13 @@ def test_footer_version_hidden_when_not_logged_in(client):
     assert get_version_info() not in footer.text  # Version number appears
 
 
-def test_browse_page_shows_breadcrumbs(client, app):
+def test_browse_page_shows_breadcrumbs(client, app, media_file_slugs):
     """Ensure /browse/<subfolder> displays correct breadcrumbs and headline"""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
-    subpath = "test/with_spaces"
-    response = client.get(f"/browse/{subpath}")
+    _, slugified_filename = media_file_slugs
+    response = client.get(f"/browse/{dirname(slugified_filename)}")
 
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")

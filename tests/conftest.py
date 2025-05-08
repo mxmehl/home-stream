@@ -5,6 +5,7 @@
 """Configuration for pytest fixtures"""
 
 import os
+import shutil
 import tempfile
 import uuid
 
@@ -21,22 +22,35 @@ MINIMAL_MP3 = bytes.fromhex(
 )
 
 
+def create_temp_config(content: dict) -> str:
+    """Write a temporary YAML config file and return its path."""
+    with tempfile.NamedTemporaryFile("w+", delete=False) as f:
+        yaml.dump(content, f)
+        f.flush()
+        return f.name
+
+
+@pytest.fixture(name="temp_media_root")
+def fixture_temp_media_root():
+    """Create a temporary directory to act as media_root"""
+    tmp_dir = tempfile.mkdtemp(prefix="media_")
+    yield tmp_dir
+    shutil.rmtree(tmp_dir)
+
+
 @pytest.fixture(name="config_file")
-def fixture_config_file():
+def fixture_config_file(temp_media_root):
     """Create a temporary config file for testing"""
     hashed_pw = bcrypt.hashpw("test".encode(), bcrypt.gensalt()).decode()
     config = {
         "users": {"testuser": hashed_pw},
         "video_extensions": ["mp4"],
         "audio_extensions": ["mp3"],
-        "media_root": "/tmp",
+        "media_root": temp_media_root,
         "secret_key": "testsecret",
         "protocol": "http",
     }
-    with tempfile.NamedTemporaryFile("w+", delete=False) as f:
-        yaml.dump(config, f)
-        path = f.name
-
+    path = create_temp_config(config)
     yield path
     os.remove(path)
 
@@ -77,13 +91,14 @@ def fixture_stream_token():
 
 
 @pytest.fixture(name="media_file")
-def fixture_media_file():
+def fixture_media_file(app):
     """
     Create a minimal valid MP3 file inside MEDIA_ROOT with spaces in filename and parent directories
     """
 
     # Create a temporary directory with spaces for the media file
-    folder = "/tmp/test/with spaces"
+    media_root = app.config["MEDIA_ROOT"]
+    folder = os.path.join(media_root, "test", "with spaces")
     os.makedirs(folder, exist_ok=True)
 
     # Example: 'sample testfile 12ab34cd56ef.mp3'
@@ -102,9 +117,9 @@ def fixture_media_file():
 
 
 @pytest.fixture(name="media_file_slugs")
-def fixture_media_file_slugs(media_file):
+def fixture_media_file_slugs(media_file, app):
     """Return both real filename and full slugified path including folders"""
-    rel_path = os.path.relpath(media_file, "/tmp")
+    rel_path = os.path.relpath(media_file, app.config["MEDIA_ROOT"])
     parts = rel_path.split(os.sep)
     slugified_parts = [slugify(p) for p in parts]
     return os.path.basename(media_file), "/".join(slugified_parts)

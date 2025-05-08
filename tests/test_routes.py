@@ -74,7 +74,7 @@ def test_404_on_invalid_browse_path(client, app):
     assert response.status_code == 404
 
 
-def test_browse_root_shows_page(client, app):
+def test_browse_root_shows_page(client, app, media_file):  # pylint: disable=unused-argument
     """Access the root browse page when authenticated"""
     with client.session_transaction() as sess:
         login_session(sess, app)
@@ -167,7 +167,8 @@ def test_dl_token_playlist_empty_folder(client, app, stream_token):
     with client.session_transaction() as sess:
         login_session(sess, app)
 
-    os.makedirs("/tmp/empty_folder", exist_ok=True)
+    empty_path = os.path.join(app.config["MEDIA_ROOT"], "empty_folder")
+    os.makedirs(empty_path, exist_ok=True)
 
     url = f"/dl-token/testuser/{stream_token}/empty_folder"
     response = client.get(url)

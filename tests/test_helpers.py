@@ -6,10 +6,8 @@
 
 import os
 import re
-import tempfile
 
 import pytest
-import yaml
 from flask import Flask, current_app, request
 
 from home_stream.helpers import (
@@ -27,6 +25,7 @@ from home_stream.helpers import (
     validate_user,
     verify_password,
 )
+from tests.conftest import create_temp_config
 
 
 def test_get_stream_token_is_consistent(app):
@@ -111,11 +110,7 @@ def test_load_config_raises_if_default_secret_used():
         "protocol": "http",
     }
 
-    with tempfile.NamedTemporaryFile("w+", delete=False) as f:
-        yaml.dump(config, f)
-        f.flush()
-        path = f.name
-
+    path = create_temp_config(config)
     try:
         app = Flask("test")
         with pytest.raises(ValueError, match="default secret_key"):
@@ -139,11 +134,7 @@ def test_load_config_raises_when_key_is_missing(missing_key):
 
     config.pop(missing_key)
 
-    with tempfile.NamedTemporaryFile("w+", delete=False) as f:
-        yaml.dump(config, f)
-        f.flush()
-        path = f.name
-
+    path = create_temp_config(config)
     try:
         app = Flask("test")
         with pytest.raises(KeyError, match=f"Missing '{missing_key}'"):

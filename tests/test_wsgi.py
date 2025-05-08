@@ -6,9 +6,8 @@
 
 import os
 import sys
-import tempfile
 
-import yaml
+from tests.conftest import create_temp_config
 
 
 def test_wsgi_app_initializes(monkeypatch):
@@ -23,15 +22,10 @@ def test_wsgi_app_initializes(monkeypatch):
         "protocol": "http",
     }
 
-    with tempfile.NamedTemporaryFile("w+", delete=False) as f:
-        yaml.dump(config, f)
-        f.flush()
-        config_path = f.name
-
+    config_path = create_temp_config(config)
     try:
         monkeypatch.setattr(sys, "argv", ["wsgi.py", config_path])
         import home_stream.wsgi as wsgi_module  # pylint: disable=import-outside-toplevel
-
         assert hasattr(wsgi_module, "app")
         assert wsgi_module.app is not None
     finally:
