@@ -4,20 +4,20 @@
 {%- if folders %}
 <h2>Folders</h2>
 <ul>
-  {%- for name, rel in folders %}
-  <li><a href="{{ url_for('browse', subpath=rel) }}">{{ name }}</a></li>
+  {%- for folder in folders %}
+  <li><a href="{{ url_for('browse', subpath=folder.slug_path) }}">{{ folder.name }}</a></li>
   {%- endfor %}
 </ul>
 {%- endif %}
 {% if files %}
 <h2>Media Files</h2>
 <ul class="files">
-  {%- for name, slug_path, stream_url in files %}
+  {%- for file in files %}
   <li>
-    {{ name }} —
-    <a href="{{ stream_url }}" target="_blank"><button>💾 Download</button></a>
-    <a href="{{ url_for('play', subpath=slug_path) }}"><button>🎬 Play in browser</button></a>
-    <button onclick="copyToClipboard('{{ stream_url }}', this)">
+    {{ file.name }} —
+    <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
+    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play in browser</button></a>
+    <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
       ▶️ Copy Stream URL
     </button>
   </li>

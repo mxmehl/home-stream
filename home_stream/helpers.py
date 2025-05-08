@@ -204,13 +204,13 @@ def resolve_real_path_from_slugs(slug_parts):
 
 def list_folder_entries_with_stream_urls(
     real_path: str, slug_parts: list[str], username: str
-) -> tuple[list[tuple[str, str]], list[tuple[str, str, str]]]:
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     """List directories and media files in a folder with slugified paths.
 
     This function scans the given directory, filters out hidden folders,
     and includes only files with allowed media extensions as defined in
     the Flask app's config. It returns both folders and files with their
-    original names and corresponding slugified paths.
+    original names, corresponding slugified paths, and Stream URLs for files.
 
     Args:
         real_path (str): Absolute path to the folder to be listed.
@@ -218,12 +218,12 @@ def list_folder_entries_with_stream_urls(
         username (str): Authenticated user.
 
     Returns:
-        tuple: A tuple containing two lists:
-            - list of tuples (folder_name, slug_path)
-            - list of tuples (file_name, slug_path, stream_url)
+        tuple: A tuple containing two lists of dictionaries:
+            - list of dicts (name (folder), slug_path)
+            - list of dicts (name (file), slug_path, stream_url)
     """
-    folders: list[tuple[str, str]] = []
-    files: list[tuple[str, str, str]] = []
+    folders: list[dict[str, str]] = []
+    files: list[dict[str, str]] = []
 
     # Loop through all entries in the directory
     for dir_element in os.listdir(real_path):
@@ -233,7 +233,7 @@ def list_folder_entries_with_stream_urls(
         # Check if entry is a directory and not hidden
         if os.path.isdir(full) and not dir_element.startswith("."):
             folder_slug_path = "/".join(slug_parts + [entry_slug])
-            folders.append((dir_element, folder_slug_path))
+            folders.append({"name": dir_element, "slug_path": folder_slug_path})
 
         # Check if entry is a file with a valid media extension
         elif os.path.isfile(full):
@@ -241,11 +241,13 @@ def list_folder_entries_with_stream_urls(
             if ext in current_app.config["MEDIA_EXTENSIONS"]:
                 file_slug_path = "/".join(slug_parts + [entry_slug])
                 stream_url = build_stream_url(username, get_stream_token(username), file_slug_path)
-                files.append((dir_element, file_slug_path, stream_url))
+                files.append(
+                    {"name": dir_element, "slug_path": file_slug_path, "stream_url": stream_url}
+                )
 
     # Sort entries alphabetically by name (case-insensitive)
-    folders.sort(key=lambda x: x[0].lower())
-    files.sort(key=lambda x: x[0].lower())
+    folders.sort(key=lambda x: x["name"].lower())
+    files.sort(key=lambda x: x["name"].lower())
 
     return folders, files
 
