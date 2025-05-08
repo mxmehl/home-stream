@@ -26,6 +26,7 @@ def test_wsgi_app_initializes(monkeypatch):
     try:
         monkeypatch.setattr(sys, "argv", ["wsgi.py", config_path])
         import home_stream.wsgi as wsgi_module  # pylint: disable=import-outside-toplevel
+
         assert hasattr(wsgi_module, "app")
         assert wsgi_module.app is not None
     finally:
