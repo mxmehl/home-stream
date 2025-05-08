@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_attrs %}data-slug-path="{{ slugified_path }}"{% endblock %}
 {% block content %}
 <h2>Player</h2>
 
@@ -8,48 +9,11 @@
 <{{ mediatype }} id="media-player" controls autoplay preload></{{ mediatype }}>
 <ul class="files" id="playlist">
   {% for file in files %}
-    <li data-src="{{ file.stream_url }}">
-      <span class="track" onclick="playFromList(this)">{{ file.name }}</span>
-    </li>
+  <li data-src="{{ file.stream_url }}">
+    <span class="track" onclick="playFromList(this)">{{ file.name }}</span>
+  </li>
   {% endfor %}
 </ul>
-
-<script>
-const player = document.getElementById("media-player");
-const playlistItems = [...document.querySelectorAll("#playlist li")];
-const nowPlaying = document.getElementById("now-playing");
-let index = 0;
-
-function setActive(i) {
-  playlistItems.forEach((item, j) => {
-    item.classList.toggle("active", j === i);
-  });
-  nowPlaying.textContent = playlistItems[i].textContent;
-}
-
-function playFromList(el) {
-  const li = el.closest("li");
-  index = playlistItems.indexOf(li);
-  player.src = li.dataset.src;
-  player.play();
-  setActive(index);
-}
-
-function playNext() {
-  if (index + 1 < playlistItems.length) {
-    index++;
-    player.src = playlistItems[index].dataset.src;
-    player.play();
-    setActive(index);
-  }
-}
-
-player.addEventListener("ended", playNext);
-
-// Initialize
-player.src = playlistItems[0].dataset.src;
-setActive(0);
-</script>
 
 {% else %}
 <{{ mediatype }} controls autoplay preload>
