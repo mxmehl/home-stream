@@ -200,3 +200,37 @@ def test_play_page_shows_breadcrumbs(client, app, media_file_slugs):
     assert "Overview" in breadcrumbs.text
     assert "test" in breadcrumbs.text
     assert "with spaces" in breadcrumbs.text
+
+
+def test_play_folder_renders_playlist_view(
+    client, app, media_file_slugs
+):  # pylint: disable=unused-argument
+    """Ensure /play/<folder> renders playlist player when path is a directory"""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    # The fixture creates the file in /tmp/test/with spaces/
+    response = client.get("/play/test/with_spaces")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert soup.find("ul", {"id": "playlist"}) is not None
+    assert soup.find(id="media-player") is not None
+    assert "Now Playing" in soup.text
+
+
+def test_browse_page_playlist_url_present(
+    client, app, media_file_slugs
+):  # pylint: disable=unused-argument
+    """Ensure the download playlist button uses the .m3u8 stream URL"""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get("/browse/test/with_spaces/")
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    assert soup.find_all("a", string=lambda t: "Download playlist" in t)
+    assert any(
+        b["href"].startswith("http://localhost/dl-token/testuser/") and "with_spaces" in b["href"]
+        for b in soup.find_all("a", href=True)
+    )

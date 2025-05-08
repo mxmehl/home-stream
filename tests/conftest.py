@@ -89,6 +89,12 @@ def fixture_media_file():
 
     with open(file_path, "wb") as f:
         f.write(MINIMAL_MP3)
+
+    # Also create a non-media file inside the same folder
+    non_media_file = os.path.join(folder, "non_media_file.txt")
+    with open(non_media_file, "w", encoding="UTF-8") as f:
+        f.write("This is not a media file.")
+
     yield file_path
     os.remove(file_path)
 
