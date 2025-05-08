@@ -18,7 +18,7 @@
   {%- set stream_url = protocol + '://' + request.host + '/' + stream_path %}
   <li>
     {{ name }} —
-    <a href="/{{ stream_path }}" target="_blank"><button>💾 Download</button></a>
+    <a href="{{ stream_url }}" target="_blank"><button>💾 Download</button></a>
     <a href="{{ url_for('play', subpath=rel) }}"><button>🎬 Play in browser</button></a>
     <button onclick="copyToClipboard('{{ stream_url }}', this)">
       ▶️ Copy Stream URL
