@@ -35,7 +35,10 @@ def fixture_config_file():
     }
     with tempfile.NamedTemporaryFile("w+", delete=False) as f:
         yaml.dump(config, f)
-        return f.name
+        path = f.name
+
+    yield path
+    os.remove(path)
 
 
 @pytest.fixture(name="app")
@@ -86,7 +89,6 @@ def fixture_media_file():
     # Example: 'sample testfile 12ab34cd56ef.mp3'
     filename = f"sample testfile {uuid.uuid4().hex[:8]}.mp3"
     file_path = os.path.join(folder, filename)
-
     with open(file_path, "wb") as f:
         f.write(MINIMAL_MP3)
 

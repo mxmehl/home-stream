@@ -114,10 +114,14 @@ def test_load_config_raises_if_default_secret_used():
     with tempfile.NamedTemporaryFile("w+", delete=False) as f:
         yaml.dump(config, f)
         f.flush()
+        path = f.name
 
+    try:
         app = Flask("test")
         with pytest.raises(ValueError, match="default secret_key"):
-            load_config(app, f.name)
+            load_config(app, path)
+    finally:
+        os.remove(path)
 
 
 @pytest.mark.parametrize("missing_key", REQUIRED_CONFIG_KEYS)
@@ -138,10 +142,14 @@ def test_load_config_raises_when_key_is_missing(missing_key):
     with tempfile.NamedTemporaryFile("w+", delete=False) as f:
         yaml.dump(config, f)
         f.flush()
+        path = f.name
 
+    try:
         app = Flask("test")
         with pytest.raises(KeyError, match=f"Missing '{missing_key}'"):
-            load_config(app, f.name)
+            load_config(app, path)
+    finally:
+        os.remove(path)
 
 
 def test_load_config_successfully_sets_flask_config(app):
