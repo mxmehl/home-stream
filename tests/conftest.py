@@ -107,6 +107,12 @@ def fixture_media_file(app):
     with open(file_path, "wb") as f:
         f.write(MINIMAL_MP3)
 
+    # Create a second file which isn't yielded
+    secondary_filename = f"secondary testfile {uuid.uuid4().hex[:8]}.mp3"
+    secondary_file_path = os.path.join(folder, secondary_filename)
+    with open(secondary_file_path, "wb") as f:
+        f.write(MINIMAL_MP3)
+
     # Also create a non-media file inside the same folder
     non_media_file = os.path.join(folder, "non_media_file.txt")
     with open(non_media_file, "w", encoding="UTF-8") as f:
@@ -118,7 +124,10 @@ def fixture_media_file(app):
 
 @pytest.fixture(name="media_file_slugs")
 def fixture_media_file_slugs(media_file, app):
-    """Return both real filename and full slugified path including folders"""
+    """Return both real filename and full slugified path including folders
+
+    Ex. Return: ('sample testfile 78d9f5a2.mp3', 'test/with_spaces/sample_testfile_78d9f5a2.mp3')
+    """
     rel_path = os.path.relpath(media_file, app.config["MEDIA_ROOT"])
     parts = rel_path.split(os.sep)
     slugified_parts = [slugify(p) for p in parts]
