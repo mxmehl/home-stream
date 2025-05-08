@@ -202,6 +202,27 @@ def resolve_real_path_from_slugs(slug_parts):
     return os.path.join(secure_path(""), *real_parts)
 
 
+def extract_path_components(subpath):
+    """Extract path components from a slugified subpath.
+
+    This function splits the subpath into its individual parts,
+    resolves the real filesystem path, and prepares a context for rendering.
+
+    Args:
+        subpath (str): The slugified subpath to be processed.
+
+    Returns:
+        tuple: A tuple containing:
+            - list of slug parts
+            - real filesystem path
+            - context dictionary for rendering
+    """
+    parts = [p for p in subpath.split("/") if p]
+    real_path = resolve_real_path_from_slugs(parts)
+    path_context = prepare_path_context(real_path, parts, current_app.config["MEDIA_ROOT"])
+    return parts, real_path, path_context
+
+
 def list_folder_entries_with_stream_urls(
     real_path: str, slug_parts: list[str], username: str
 ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:

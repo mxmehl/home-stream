@@ -27,12 +27,12 @@ from home_stream.forms import LoginForm
 from home_stream.helpers import (
     build_stream_url,
     compute_session_signature,
+    extract_path_components,
     file_type,
     get_stream_token,
     get_version_info,
     list_folder_entries_with_stream_urls,
     load_config,
-    prepare_path_context,
     resolve_real_path_from_slugs,
     truncate_secret,
     validate_user,
@@ -150,9 +150,7 @@ def init_routes(app: Flask, limiter: Limiter):
             return redirect(url_for("login", next=request.full_path))
 
         # Build real and slug paths and breadcrumbs
-        parts = [p for p in subpath.split("/") if p]
-        real_path = resolve_real_path_from_slugs(parts)
-        path_context = prepare_path_context(real_path, parts, app.config["MEDIA_ROOT"])
+        parts, real_path, path_context = extract_path_components(subpath)
 
         if not os.path.isdir(real_path):
             abort(404)
@@ -179,9 +177,7 @@ def init_routes(app: Flask, limiter: Limiter):
             return redirect(url_for("login", next=request.full_path))
 
         # Build real and slug paths and breadcrumbs
-        parts = subpath.split("/")
-        real_path = resolve_real_path_from_slugs(parts)
-        path_context = prepare_path_context(real_path, parts, app.config["MEDIA_ROOT"])
+        parts, real_path, path_context = extract_path_components(subpath)
 
         if not os.path.isfile(real_path):
             abort(404)
