@@ -50,11 +50,17 @@ document.addEventListener("DOMContentLoaded", function () {
     const src = playlistItems[i].dataset.src;
     player.src = src;
     setActive(i);
-    player.play();
+    player.load();
+    player.play().catch(err => {
+      // Suppress harmless abort errors
+      if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
+        console.error("Playback failed:", err);
+      }
+    });
   }
 
   // On click: find parent <li> and play its track
-  function playFromList(trackElement) {
+  window.playFromList = function (trackElement) {
     const li = trackElement.closest("li");
     index = playlistItems.indexOf(li);
     loadAndPlay(index);
