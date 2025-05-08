@@ -90,7 +90,6 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
     @app.context_processor
     def inject_vars():
         return {
-            "stream_token": get_stream_token(session["username"]) if "username" in session else "",
             "version_info": get_version_info(),
         }
 
