@@ -221,7 +221,7 @@ def test_play_folder_renders_playlist_view(
 
 
 def test_browse_page_playlist_url_present(
-    client, app, media_file_slugs
+    client, app, stream_token, media_file_slugs
 ):  # pylint: disable=unused-argument
     """Ensure the download playlist button uses the .m3u8 stream URL"""
     with client.session_transaction() as sess:
@@ -232,6 +232,73 @@ def test_browse_page_playlist_url_present(
 
     assert soup.find_all("a", string=lambda t: "Download playlist" in t)
     assert any(
-        b["href"].startswith("http://localhost/dl-token/testuser/") and "with_spaces" in b["href"]
+        b["href"].startswith(f"http://localhost/dl-token/testuser/{stream_token}")
+        and "with_spaces" in b["href"]
         for b in soup.find_all("a", href=True)
     )
+
+
+def test_browse_page_playlist_stream_url_button(client, app, media_file_slugs, stream_token):
+    """Ensure the playlist stream URL works when fetched"""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    _, slugified_filename = media_file_slugs
+
+    response = client.get("/browse/test/with_spaces/")
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    buttons = soup.find_all(
+        "button", string=lambda text: text and "Copy Stream URL for playlist" in text
+    )
+    assert buttons, "No Copy Stream URL for Playlist button found"
+
+    button = buttons[0]
+    onclick = button.get("onclick")
+    assert onclick and "copyToClipboard(" in onclick
+
+    match = re.search(r"copyToClipboard\('([^']+)'", onclick)
+    assert match, "Stream URL not found in onclick"
+
+    stream_url = unquote(match.group(1))
+    assert stream_url.startswith(
+        f"http://localhost/dl-token/testuser/{stream_token}/{dirname(slugified_filename)}"
+    )
+
+
+def test_play_folder_with_multiple_files(client, app, media_file_slugs, stream_token):
+    """Ensure /play/<folder> renders a playlist with correct stream URLs"""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    _, slugified_path = media_file_slugs
+    expected_url = f"http://localhost/dl-token/testuser/{stream_token}/{slugified_path}"
+
+    # Access the folder-level play route
+    response = client.get("/play/test/with_spaces")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    # Check core playlist elements
+    playlist = soup.find("ul", {"id": "playlist"})
+    assert playlist is not None
+    assert soup.find(id="media-player") is not None
+    assert soup.find(id="now-playing") is not None
+
+    items = playlist.find_all("li")
+    assert len(items) >= 2, "Expected at least two playlist items"
+
+    # Validate structure and content
+    found_stream_url = False
+    for li in items:
+        track = li.find("span", class_="track")
+        assert track is not None
+        assert li.has_attr("data-src")
+        url = li["data-src"]
+        assert url.startswith("http")
+
+        if expected_url in url:
+            found_stream_url = True
+
+    assert found_stream_url, "Expected stream URL not found in any playlist item"
