@@ -22,8 +22,7 @@ bcrypt = "^4.3.0"
 pyyaml = "^6.0.2"
 flask = "^3.1.0"
 flask-wtf = "^1.2.2"
-flask-limiter = {extras = ["valkey"], version = "^3.12"}
-valkey = "^6.1.0"
+flask-limiter = {extras = ["redis", "valkey"], version = "^3.12"}
 
 [tool.poetry.group.web.dependencies]
 uwsgi = "^2.0.28"
