@@ -35,3 +35,22 @@ video {
     font-size: 0.9rem;
   }
 }
+
+#playlist li {
+
+  .track {
+    cursor: pointer;
+
+    &:hover {
+      font-weight: bold;
+    }
+  }
+
+  &.active {
+    font-weight: bold;
+
+    &::before {
+      content: "▶️ ";
+    }
+  }
+}

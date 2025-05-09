@@ -4,27 +4,33 @@
 {%- if folders %}
 <h2>Folders</h2>
 <ul>
-  {%- for name, rel in folders %}
-  <li><a href="{{ url_for('browse', subpath=rel) }}">{{ name }}</a></li>
+  {%- for folder in folders %}
+  <li><a href="{{ url_for('browse', subpath=folder.slug_path) }}">{{ folder.name }}</a></li>
   {%- endfor %}
 </ul>
 {%- endif %}
 {% if files %}
 <h2>Media Files</h2>
 <ul class="files">
-  {%- for name, rel in files %}
-  {#- Create urlencoded stream URL based on user-individual token and path #}
-  {%- set stream_path = ('dl-token', username, stream_token, rel) | join("/") | urlencode %}
-  {%- set stream_url = protocol + '://' + request.host + '/' + stream_path %}
+  {%- for file in files %}
   <li>
-    {{ name }} —
-    <a href="/{{ stream_path }}" target="_blank"><button>💾 Download</button></a>
-    <a href="{{ url_for('play', subpath=rel) }}"><button>🎬 Play in browser</button></a>
-    <button onclick="copyToClipboard('{{ stream_url }}', this)">
+    {{ file.name }} —
+    <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
+    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play in browser</button></a>
+    <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
       ▶️ Copy Stream URL
     </button>
   </li>
   {%- endfor %}
 </ul>
+
+<h2>Play All Files</h2>
+<p>
+  <a href="{{ playlist_stream_url }}" target="_blank"><button>💾 Download playlist</button></a>
+  <a href="{{ url_for('play', subpath=slugified_path) }}"><button>🎬 Play all files in browser</button></a>
+  <button onclick="copyToClipboard('{{ playlist_stream_url }}', this)">
+    ▶️ Copy Stream URL for playlist
+  </button>
+</p>
 {%- endif %}
 {%- endblock %}

@@ -10,7 +10,7 @@
   <script src="{{ url_for('static', filename='main.js') }}" crossorigin></script>
 </head>
 
-<body>
+<body {% block body_attrs %}{% endblock %}>
   <main class="container">
     {%- if session.username %}
     <div id="user-info">

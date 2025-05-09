@@ -74,7 +74,7 @@ def test_404_on_invalid_browse_path(client, app):
     assert response.status_code == 404
 
 
-def test_browse_root_shows_page(client, app):
+def test_browse_root_shows_page(client, app, media_file):  # pylint: disable=unused-argument
     """Access the root browse page when authenticated"""
     with client.session_transaction() as sess:
         login_session(sess, app)
@@ -140,5 +140,53 @@ def test_dl_token_valid_but_file_missing(client, app, stream_token):
 
     filename = "ghost.mp3"
     url = f"/dl-token/testuser/{stream_token}/{filename}"
+    response = client.get(url)
+    assert response.status_code == 404
+
+
+def test_dl_token_playlist_m3u8_response(client, app, stream_token, media_file_slugs):
+    """Ensure .m3u8 playlist is returned for a folder with valid token"""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    url = f"/dl-token/testuser/{stream_token}/test/with_spaces"
+    response = client.get(url)
+
+    _, media_file_slug = media_file_slugs
+    expected_stream_url = f"http://localhost/dl-token/testuser/{stream_token}/{media_file_slug}"
+
+    assert response.status_code == 200
+    assert response.mimetype == "audio/mpegurl"
+    assert b"#EXTM3U" in response.data
+    assert b"#EXTINF" in response.data
+    assert b".txt" not in response.data
+
+    # Test file names and stream URLs
+    assert bytes(expected_stream_url, encoding="UTF-8") in response.data
+    assert b"secondary_testfile" in response.data
+
+
+def test_dl_token_playlist_empty_folder(client, app, stream_token):
+    """Ensure an empty folder returns a minimal .m3u8 playlist"""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    empty_path = os.path.join(app.config["MEDIA_ROOT"], "empty_folder")
+    os.makedirs(empty_path, exist_ok=True)
+
+    url = f"/dl-token/testuser/{stream_token}/empty_folder"
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert b"#EXTM3U" in response.data
+    assert b"#EXTINF" not in response.data
+
+
+def test_dl_token_playlist_invalid_path(client, app, stream_token):
+    """Ensure a 404 is returned for an invalid folder path"""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    url = f"/dl-token/testuser/{stream_token}/nonexistent_folder"
     response = client.get(url)
     assert response.status_code == 404

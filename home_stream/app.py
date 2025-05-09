@@ -10,6 +10,7 @@ import os
 
 from flask import (
     Flask,
+    Response,
     abort,
     redirect,
     render_template,
@@ -25,14 +26,15 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
+    build_playlist_content,
+    build_stream_url,
     compute_session_signature,
+    extract_path_components,
     file_type,
     get_stream_token,
     get_version_info,
-    list_folder_entries,
+    list_folder_entries_with_stream_urls,
     load_config,
-    prepare_path_context,
-    resolve_real_path_from_slugs,
     truncate_secret,
     validate_user,
 )
@@ -81,14 +83,13 @@ def create_app(config_path: str, debug: bool = False) -> Flask:
     return app
 
 
-def init_routes(app: Flask, limiter: Limiter):
+def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-statements
     """Initialize routes for the Flask application."""
 
     # Inject variables into templates
     @app.context_processor
     def inject_vars():
         return {
-            "stream_token": get_stream_token(session["username"]) if "username" in session else "",
             "version_info": get_version_info(),
         }
 
@@ -149,14 +150,24 @@ def init_routes(app: Flask, limiter: Limiter):
             return redirect(url_for("login", next=request.full_path))
 
         # Build real and slug paths and breadcrumbs
-        parts = [p for p in subpath.split("/") if p]
-        real_path = resolve_real_path_from_slugs(parts)
-        path_context = prepare_path_context(real_path, parts, app.config["MEDIA_ROOT"])
+        parts, real_path, path_context = extract_path_components(subpath)
 
         if not os.path.isdir(real_path):
             abort(404)
 
-        folders, files = list_folder_entries(real_path, parts)
+        # Create a list of folders and files
+        folders, files = list_folder_entries_with_stream_urls(
+            real_path=real_path,
+            slug_parts=parts,
+            username=session.get("username"),
+        )
+
+        # Create a tokenised playlist URL
+        playlist_stream_url = build_stream_url(
+            username=session.get("username"),
+            token=get_stream_token(session["username"]),
+            rel_path=subpath,
+        )
 
         return render_template(
             "browse.html",
@@ -165,8 +176,7 @@ def init_routes(app: Flask, limiter: Limiter):
             breadcrumb_parts=path_context["breadcrumb_parts"],
             folders=folders,
             files=files,
-            username=session.get("username"),
-            protocol=app.config["PROTOCOL"],
+            playlist_stream_url=playlist_stream_url,
         )
 
     @app.route("/play/<path:subpath>")
@@ -174,22 +184,47 @@ def init_routes(app: Flask, limiter: Limiter):
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
-        # Build real and slug paths and breadcrumbs
-        parts = subpath.split("/")
-        real_path = resolve_real_path_from_slugs(parts)
-        path_context = prepare_path_context(real_path, parts, app.config["MEDIA_ROOT"])
+        # Extract parts, real path, and context
+        parts, real_path, path_context = extract_path_components(subpath)
 
-        if not os.path.isfile(real_path):
-            abort(404)
+        username = session.get("username")
+        token = get_stream_token(username)
 
-        return render_template(
-            "play.html",
-            slugified_path=path_context["slugified_path"],
-            display_path=path_context["current_name"],
-            breadcrumb_parts=path_context["breadcrumb_parts"],
-            mediatype=file_type(real_path),
-            username=session.get("username"),
-        )
+        # Case: path is single media file, please it
+        if os.path.isfile(real_path):
+            stream_url = build_stream_url(username, token, "/".join(parts))
+            return render_template(
+                "play.html",
+                slugified_path=path_context["slugified_path"],
+                display_path=path_context["current_name"],
+                breadcrumb_parts=path_context["breadcrumb_parts"],
+                mediatype=file_type(real_path),
+                stream_url=stream_url,
+                is_playlist=False,
+            )
+
+        # Case: path is folder, play all contained media files
+        if os.path.isdir(real_path):
+            _, files = list_folder_entries_with_stream_urls(
+                real_path=real_path,
+                slug_parts=parts,
+                username=username,
+            )
+            mediatype = (
+                "audio" if all(file_type(f.get("name", "")) == "audio" for f in files) else "video"
+            )
+
+            return render_template(
+                "play.html",
+                slugified_path=path_context["slugified_path"],
+                display_path=path_context["current_name"],
+                breadcrumb_parts=path_context["breadcrumb_parts"],
+                files=files,
+                mediatype=mediatype,
+                is_playlist=True,
+            )
+
+        abort(404)
 
     @app.route("/dl-token/<username>/<token>/<path:subpath>")
     def download_token_auth(username, token, subpath):
@@ -201,11 +236,33 @@ def init_routes(app: Flask, limiter: Limiter):
             )
             abort(403)
 
-        parts = subpath.split("/")
-        real_path = resolve_real_path_from_slugs(parts)
+        # Build real and slug paths and breadcrumbs
+        parts, real_path, _ = extract_path_components(subpath)
 
+        # If the path is a file, send it (download)
         if os.path.isfile(real_path):
             return send_file(real_path)
+
+        # If the path is a folder, create a M3U8 playlist containing all stream URLs of the
+        # contained files
+        if os.path.isdir(real_path):
+            # Create a list of folders and files
+            _, files = list_folder_entries_with_stream_urls(
+                real_path=real_path,
+                slug_parts=parts,
+                username=username,
+            )
+
+            playlist_content = build_playlist_content(playlist_name=subpath, files=files)
+
+            return Response(
+                playlist_content,
+                mimetype="audio/mpegurl",
+                headers={
+                    "Content-Disposition": f"attachment; filename={subpath}.m3u8",
+                    "Content-Type": "audio/mpegurl",
+                },
+            )
 
         abort(404)
 

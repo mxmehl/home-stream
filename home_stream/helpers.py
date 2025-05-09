@@ -9,6 +9,7 @@ import hmac
 import os
 import re
 import subprocess
+from urllib.parse import quote
 
 import yaml
 from bcrypt import checkpw
@@ -201,27 +202,79 @@ def resolve_real_path_from_slugs(slug_parts):
     return os.path.join(secure_path(""), *real_parts)
 
 
-def list_folder_entries(real_path, slug_parts):
-    """List folders and files with correct slugified paths"""
-    folders, files = [], []
-    for entry in os.listdir(real_path):
-        full = os.path.join(real_path, entry)
-        entry_slug = slugify(entry)
-        if os.path.isdir(full) and not entry.startswith("."):
+def extract_path_components(subpath):
+    """Extract path components from a slugified subpath.
+
+    This function splits the subpath into its individual parts,
+    resolves the real filesystem path, and prepares a context for rendering.
+
+    Args:
+        subpath (str): The slugified subpath to be processed.
+
+    Returns:
+        tuple: A tuple containing:
+            - list of slug parts
+            - real filesystem path
+            - context dictionary for rendering
+    """
+    parts = [p for p in subpath.split("/") if p]
+    real_path = resolve_real_path_from_slugs(parts)
+    path_context = prepare_path_context(real_path, parts, current_app.config["MEDIA_ROOT"])
+    return parts, real_path, path_context
+
+
+def list_folder_entries_with_stream_urls(
+    real_path: str, slug_parts: list[str], username: str
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """List directories and media files in a folder with slugified paths.
+
+    This function scans the given directory, filters out hidden folders,
+    and includes only files with allowed media extensions as defined in
+    the Flask app's config. It returns both folders and files with their
+    original names, corresponding slugified paths, and Stream URLs for files.
+
+    Args:
+        real_path (str): Absolute path to the folder to be listed.
+        slug_parts (list[str]): List of slug parts to prefix to each entry's slug.
+        username (str): Authenticated user.
+
+    Returns:
+        tuple: A tuple containing two lists of dictionaries:
+            - list of dicts (name (folder), slug_path)
+            - list of dicts (name (file), slug_path, stream_url)
+    """
+    folders: list[dict[str, str]] = []
+    files: list[dict[str, str]] = []
+
+    # Loop through all entries in the directory
+    for dir_element in os.listdir(real_path):
+        full = os.path.join(real_path, dir_element)
+        entry_slug = slugify(dir_element)
+
+        # Check if entry is a directory and not hidden
+        if os.path.isdir(full) and not dir_element.startswith("."):
             folder_slug_path = "/".join(slug_parts + [entry_slug])
-            folders.append((entry, folder_slug_path))
+            folders.append({"name": dir_element, "slug_path": folder_slug_path})
+
+        # Check if entry is a file with a valid media extension
         elif os.path.isfile(full):
-            ext = os.path.splitext(entry)[1].lower().strip(".")
+            ext = os.path.splitext(dir_element)[1].lower().strip(".")
             if ext in current_app.config["MEDIA_EXTENSIONS"]:
                 file_slug_path = "/".join(slug_parts + [entry_slug])
-                files.append((entry, file_slug_path))
-    folders.sort(key=lambda x: x[0].lower())
-    files.sort(key=lambda x: x[0].lower())
+                stream_url = build_stream_url(username, get_stream_token(username), file_slug_path)
+                files.append(
+                    {"name": dir_element, "slug_path": file_slug_path, "stream_url": stream_url}
+                )
+
+    # Sort entries alphabetically by name (case-insensitive)
+    folders.sort(key=lambda x: x["name"].lower())
+    files.sort(key=lambda x: x["name"].lower())
+
     return folders, files
 
 
 def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
-    """# pylint: disable=line-too-long
+    """
     Construct context information for templates based on a resolved real path and its slug parts.
 
     This includes:
@@ -244,7 +297,7 @@ def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
             "breadcrumb_parts": List[dict],# e.g., [{"name": "Overview", "slug": ""}, # {"name": "Shows", "slug": "Shows"}]
             "current_name": str            # e.g., "Battlestar Galactica"
         }
-    """
+    """  # pylint: disable=line-too-long
     # Join slugified parts back into a path string
     slugified_path = "/".join(slug_parts) if slug_parts else ""
 
@@ -276,3 +329,33 @@ def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
         "breadcrumb_parts": breadcrumb_parts,
         "current_name": current_name,
     }
+
+
+def build_stream_url(username: str, token: str, rel_path: str) -> str:
+    """
+    Build a full stream URL for a given user and relative file path.
+
+    Args:
+        username (str): Authenticated user
+        token (str): Token generated via get_stream_token()
+        rel_path (str): Slugified relative path (e.g. Music/HipHop/Track.mp3)
+
+    Returns:
+        str: Full stream URL
+    """
+    protocol = current_app.config["PROTOCOL"]
+    host = request.host
+    return f"{protocol}://{host}/dl-token/{quote(username)}/{token}/{quote(rel_path)}"
+
+
+def build_playlist_content(playlist_name: str, files: list[dict[str, str]]) -> str:
+    """Build a playlist content string for M3U8 format."""
+    playlist_lines = ["#EXTM3U"]
+    playlist_lines.append(f"#PLAYLIST: {playlist_name}")
+    for file in files:
+        playlist_lines.append(
+            # TODO: Add duration of file
+            f"#EXTINF:-1,{file.get('name', '')}"  # NOTE: -1 means unknown duration
+        )
+        playlist_lines.append(file.get("stream_url", ""))
+    return "\n".join(playlist_lines)
