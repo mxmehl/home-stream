@@ -58,7 +58,7 @@ def test_secure_path_allows_normal_path(app):
         os.makedirs(os.path.join(media_root, subpath), exist_ok=True)
 
         resolved = secure_path(subpath)
-        assert resolved.startswith(media_root)
+        assert os.path.realpath(resolved).startswith(os.path.realpath(media_root))
         assert resolved.endswith("example")
 
 
