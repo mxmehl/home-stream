@@ -12,6 +12,7 @@ function copyToClipboard(text, button) {
  * Playlist player logic for Home Stream
  *
  * - Remembers the last played track index per folder using localStorage
+ * - Also stores the last playback time of the track
  * - Updates the "Now Playing" label and highlights the active track
  * - Allows user to click a track name to start playing it
  * - Automatically plays the next track when one finishes
@@ -50,24 +51,40 @@ document.addEventListener("DOMContentLoaded", function () {
     const src = playlistItems[i].dataset.src;
     player.src = src;
     setActive(i);
-    player.load();
-    player.play().catch(err => {
-      // Suppress harmless abort errors
-      if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
-        console.error("Playback failed:", err);
+
+    const savedTime = parseFloat(localStorage.getItem("lastTime:" + folderKey));
+
+    // Wait until metadata is loaded before seeking
+    player.onloadedmetadata = () => {
+      if (!isNaN(savedTime)) {
+        player.currentTime = savedTime;
       }
-    });
+
+      // Try to autoplay, fallback silently if blocked
+      player.play().catch(err => {
+        // If autoplay is blocked, just log the error. It's usually harmless
+        if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
+          console.error("Playback failed:", err);
+        }
+      });
+    };
+
+    player.load();
   }
 
   // On click: find parent <li> and play its track
   window.playFromList = function (trackElement) {
     const li = trackElement.closest("li");
     index = playlistItems.indexOf(li);
+    localStorage.removeItem("lastTime:" + folderKey); // Clear old time
     loadAndPlay(index);
   }
 
   // Advance to next track when one ends
   function playNext() {
+    // Clear saved time when moving to next track
+    localStorage.removeItem("lastTime:" + folderKey);
+
     if (index + 1 < playlistItems.length) {
       index++;
       loadAndPlay(index);
@@ -82,6 +99,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Attach "ended" event to play next track automatically
   player.addEventListener("ended", playNext);
+
+  // Periodically store current playback time in localStorage (every 5 seconds)
+  let lastTimeSave = 0;
+  player.addEventListener("timeupdate", () => {
+    const now = Date.now();
+    if (now - lastTimeSave > 5000) {
+      localStorage.setItem("lastTime:" + folderKey, player.currentTime);
+      lastTimeSave = now;
+    }
+  });
 
   // Initial load: play the last remembered track
   loadAndPlay(index);
