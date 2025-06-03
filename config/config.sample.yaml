@@ -25,6 +25,9 @@ users:
 secret_key: "CHANGE_ME_IN_FAVOUR_OF_A_LONG_PASSWORD"
 # Protocol used to serve the files. Can be either http or https
 protocol: https
+# Optional: Modified rate limits following https://flask-limiter.readthedocs.io/en/stable/configuration.html#rate-limit-string-notation
+# rate_limit_default: 25 per 5 minutes
+# rate_limit_login: 2 per 10 seconds
 # Optional: rate limit storage backend, defaults to memory://
 # In the proposed Docker setup, it could be redis://home-stream-valkey:6379
 # rate_limit_storage_uri: redis://localhost:6379

@@ -68,7 +68,7 @@ def create_app(config_path: str, debug: bool = False) -> Flask:
     limiter = Limiter(
         get_remote_address,
         app=app,
-        default_limits=["50 per 10 minutes"],
+        default_limits=[app.config.get("RATE_LIMIT_DEFAULT", "")],
         storage_uri=app.config.get("RATE_LIMIT_STORAGE_URI"),
     )
     if app.config.get("RATE_LIMIT_STORAGE_URI") == "memory://" and not app.debug:
@@ -107,7 +107,7 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
         return auth_signature == expected_signature
 
     @app.route("/login", methods=["GET", "POST"])
-    @limiter.limit("2 per 10 seconds")
+    @limiter.limit(app.config.get("RATE_LIMIT_LOGIN", ""))
     def login():
         form = LoginForm()
         error = None
