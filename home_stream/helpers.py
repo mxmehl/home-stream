@@ -55,6 +55,8 @@ def load_config(app: Flask, filename: str) -> None:
 
     # Set defaults
     app.config["RATE_LIMIT_STORAGE_URI"] = app.config.get("RATE_LIMIT_STORAGE_URI", "memory://")
+    app.config["RATE_LIMIT_DEFAULT"] = app.config.get("RATE_LIMIT_DEFAULT", "25 per 5 minutes")
+    app.config["RATE_LIMIT_LOGIN"] = app.config.get("RATE_LIMIT_LOGIN", "2 per 10 seconds")
 
     # Print the loaded config in DEBUG mode
     app.logger.debug(app.config)
