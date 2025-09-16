@@ -440,14 +440,14 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flask-limiter"
-version = "3.12"
+version = "3.13"
 description = "Rate limiting for flask applications"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flask_limiter-3.12-py3-none-any.whl", hash = "sha256:b94c9e9584df98209542686947cf647f1ede35ed7e4ab564934a2bb9ed46b143"},
-    {file = "flask_limiter-3.12.tar.gz", hash = "sha256:f9e3e3d0c4acd0d1ffbfa729e17198dd1042f4d23c130ae160044fc930e21300"},
+    {file = "flask_limiter-3.13-py3-none-any.whl", hash = "sha256:2664933f71e3759a518c59cd07e05c2f7bb7614eb88d420ac348b05e32c6cb94"},
+    {file = "flask_limiter-3.13.tar.gz", hash = "sha256:f665ddc6531612c435cc8fabd58d48cf3b86b7985571e1e3644bcd389b802329"},
 ]
 
 [package.dependencies]
@@ -458,7 +458,8 @@ limits = [
     {version = "*", extras = ["valkey"], optional = true, markers = "extra == \"valkey\""},
 ]
 ordered-set = ">4,<5"
-rich = ">=12,<14"
+rich = ">=12,<15"
+typing_extensions = ">=4.3"
 
 [package.extras]
 memcached = ["limits[memcached]"]
