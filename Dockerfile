@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-FROM python:3.13-slim AS base
+FROM python:3.14-slim AS base
 
 ENV PATH="$PATH:/root/.local/bin"
 EXPOSE 8000
