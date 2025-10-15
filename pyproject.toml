@@ -28,8 +28,8 @@ flask-limiter = {extras = ["redis", "valkey"], version = "^3.12"}
 uwsgi = "^2.0.28"
 
 [tool.poetry.group.dev.dependencies]
-isort = "^6.0.1"
-pylint = "^3.3.6"
+isort = "^7.0.0"
+pylint = "^4.0.0"
 black = "^25.1.0"
 mypy = "^1.15.0"
 bump-my-version = "^1.1.1"
