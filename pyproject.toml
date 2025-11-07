@@ -19,24 +19,24 @@ home-stream = "home_stream.app:main"
 [tool.poetry.dependencies]
 python = "^3.10"
 bcrypt = "^5.0.0"
-pyyaml = "^6.0.2"
-flask = "^3.1.0"
+pyyaml = "^6.0.3"
+flask = "^3.1.2"
 flask-wtf = "^1.2.2"
 flask-limiter = {extras = ["redis", "valkey"], version = "^4.0.0"}
 
 [tool.poetry.group.web.dependencies]
-uwsgi = "^2.0.28"
+uwsgi = "^2.0.31"
 
 [tool.poetry.group.dev.dependencies]
 isort = "^7.0.0"
-pylint = "^4.0.0"
-black = "^25.1.0"
-mypy = "^1.15.0"
-bump-my-version = "^1.1.1"
-pytest = "^8.3.5"
+pylint = "^4.0.2"
+black = "^25.9.0"
+mypy = "^1.18.2"
+bump-my-version = "^1.2.4"
+pytest = "^8.4.2"
 pytest-flask = "^1.3.0"
 pytest-cov = "^7.0.0"
-beautifulsoup4 = "^4.13.3"
+beautifulsoup4 = "^4.14.2"
 h11 = "^0.16.0"
 
 [build-system]
