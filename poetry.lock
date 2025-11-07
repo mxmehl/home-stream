@@ -478,18 +478,18 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flask-limiter"
-version = "3.13"
+version = "4.0.0"
 description = "Rate limiting for flask applications"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flask_limiter-3.13-py3-none-any.whl", hash = "sha256:2664933f71e3759a518c59cd07e05c2f7bb7614eb88d420ac348b05e32c6cb94"},
-    {file = "flask_limiter-3.13.tar.gz", hash = "sha256:f665ddc6531612c435cc8fabd58d48cf3b86b7985571e1e3644bcd389b802329"},
+    {file = "flask_limiter-4.0.0-py3-none-any.whl", hash = "sha256:be62b462d5a052d21572d4c932e18a8da58cf9ddc18a34b6f1c21fa2ec35a395"},
+    {file = "flask_limiter-4.0.0.tar.gz", hash = "sha256:536a8df0bb2033f415a2212e19a3b7ddfea38585ac5a2444e1cfa986a697847c"},
 ]
 
 [package.dependencies]
-Flask = ">=2"
+flask = ">=2"
 limits = [
     {version = ">=3.13"},
     {version = "*", extras = ["redis"], optional = true, markers = "extra == \"redis\""},
@@ -497,7 +497,7 @@ limits = [
 ]
 ordered-set = ">4,<5"
 rich = ">=12,<15"
-typing_extensions = ">=4.3"
+typing-extensions = ">=4.3"
 
 [package.extras]
 memcached = ["limits[memcached]"]
@@ -1733,4 +1733,4 @@ email = ["email-validator"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "116706e4d87670a469954084dc938cb864aa916ec816adf48d0aa8c3b1a9d1ea"
+content-hash = "6372bbd4bc6ad519d61024027a3add3147901910f896174fe62e291004135037"
