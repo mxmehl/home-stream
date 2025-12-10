@@ -487,14 +487,14 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flask-limiter"
-version = "4.1.0"
+version = "4.1.1"
 description = "Rate limiting for flask applications"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "flask_limiter-4.1.0-py3-none-any.whl", hash = "sha256:3c67c0d334f50ae9f1288b0c2f622cc9ed42018a145f66e59918b9aecb5efcdc"},
-    {file = "flask_limiter-4.1.0.tar.gz", hash = "sha256:7be4a8a3fd226f6bce1e633bdac4af16b0d231b6e186f1a6783aa319eb8730ae"},
+    {file = "flask_limiter-4.1.1-py3-none-any.whl", hash = "sha256:e1ae13e06e6b3e39a4902e7d240b901586b25932c2add7bd5f5eeb4bdc11111b"},
+    {file = "flask_limiter-4.1.1.tar.gz", hash = "sha256:ca11608fc7eec43dcea606964ca07c3bd4ec1ae89043a0f67f717899a4f48106"},
 ]
 
 [package.dependencies]
