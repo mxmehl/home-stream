@@ -17,6 +17,6 @@ services:
       - valkey
 
   valkey:
-    image: valkey/valkey:8
+    image: valkey/valkey:9
     container_name: home-stream-valkey
     restart: unless-stopped
