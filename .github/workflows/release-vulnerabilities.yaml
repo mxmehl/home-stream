@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Max Mehl <https://mehl.mx>
+#
 # SPDX-License-Identifier: CC0-1.0
-# SPDX-FileCopyrightText: 2025 Max Mehl
 
 name: Vulnerability Check of Latest Release/Tag
 
@@ -7,6 +8,9 @@ on:
   workflow_dispatch:  # allow to trigger manually
   schedule:
     - cron: "35 9 * * 1"  # run a check once a week
+
+permissions:
+  contents: read
 
 jobs:
   osv-check:

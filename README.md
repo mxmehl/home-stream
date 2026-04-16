@@ -27,7 +27,7 @@ Minimum Python version: 3.10
 
 ### Install and run via pipx (Recommended)
 
-[pipx](hhttps://pipx.pypa.io/) makes installing and running Python programs easier and avoids conflicts with other packages. Install it with
+[pipx](https://pipx.pypa.io/) makes installing and running Python programs easier and avoids conflicts with other packages. Install it with
 
 ```sh
 pip3 install pipx
@@ -84,7 +84,7 @@ Log in via browser, by default on [localhost:8000](http://localhost:8000). Brows
 
 For productive use, you should use a proper webserver. Streaming many and large chunks of files may trigger issues with apps like gunicorn, so uWSGI is officially supported.
 
-For a quick start, run `poetry run uwsgi --ini uwsgi.ini`. Using the docker image [`ghcr.io/mxmehl/home-stream`](https://github.com/mxmehl/home-stream/pkgs/container/home-stream) you would have everything contained into one container, ready to be use locally or behind a reverse proxy. Note that depending on your use-cases, you may want to reconfigure some uwsgi settings. This currently would need to be done manually.
+For a quick start, run `uv run uwsgi --ini uwsgi.ini`. Using the docker image [`ghcr.io/mxmehl/home-stream`](https://github.com/mxmehl/home-stream/pkgs/container/home-stream) you would have everything contained into one container, ready to be use locally or behind a reverse proxy. Note that depending on your use-cases, you may want to reconfigure some uwsgi settings. This currently would need to be done manually.
 
 ### Usage Scenarios
 

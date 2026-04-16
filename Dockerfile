@@ -2,41 +2,51 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-FROM python:3.14-slim AS base
+# --- Build stage ---
+FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
 
-ENV PATH="$PATH:/root/.local/bin"
-EXPOSE 8000
+# Install build dependencies for packages with C extensions (uwsgi)
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install required Python packages
-RUN pip install --no-cache-dir pipx && \
-    pipx install --global poetry && \
-    pipx ensurepath
-
-# Make poetry create venv in /app/.venv
-RUN poetry config virtualenvs.in-project true
+# Compile bytecode for faster startup; copy mode for cache mount compatibility
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
 WORKDIR /app
 
-FROM base AS build
+# Install dependencies first (separate layer for better caching)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=README.md,target=README.md \
+    uv sync --locked --no-dev --no-install-project
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    build-essential
+# Copy the project and install it
+COPY . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev
 
-# Add relevant python files for installing project
-COPY pyproject.toml poetry.lock README.md /app/
-COPY home_stream /app/home_stream
-
-RUN poetry install --without dev
-
-FROM base AS runtime
+# --- Runtime stage ---
+FROM python:3.14-slim-trixie
 
 # Create a group and user
 RUN groupadd --gid 999 app && \
     useradd --uid 999 --gid app --shell /bin/bash --create-home app
 
-COPY --from=build /app/.venv /app/.venv
+WORKDIR /app
+
+# Copy the virtual environment (with compiled bytecode) from the builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application source (needed by uwsgi wsgi-file directive)
 COPY . /app
+
+# Activate the virtual environment via PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
 RUN chown -R app:app /app
 USER app
 
-CMD ["poetry", "run", "uwsgi", "--ini", "uwsgi.docker.ini"]
+EXPOSE 8000
+CMD ["uwsgi", "--ini", "uwsgi.docker.ini"]
