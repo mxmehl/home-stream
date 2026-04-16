@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Tests for the Home Stream wsgi module"""
+"""Tests for the Home Stream wsgi module."""
 
 import os
 import sys
@@ -10,9 +10,8 @@ import sys
 from tests.conftest import create_temp_config
 
 
-def test_wsgi_app_initializes(monkeypatch):
+def test_wsgi_app_initializes(monkeypatch) -> None:
     """Smoke test: Ensure wsgi.py loads the app without errors."""
-
     config = {
         "users": {"testuser": "fake"},
         "video_extensions": ["mp4"],
@@ -25,7 +24,7 @@ def test_wsgi_app_initializes(monkeypatch):
     config_path = create_temp_config(config)
     try:
         monkeypatch.setattr(sys, "argv", ["wsgi.py", config_path])
-        import home_stream.wsgi as wsgi_module  # pylint: disable=import-outside-toplevel
+        import home_stream.wsgi as wsgi_module
 
         assert hasattr(wsgi_module, "app")
         assert wsgi_module.app is not None

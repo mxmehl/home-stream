@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Home Stream Web Application"""
+"""Home Stream Web Application."""
 
 from importlib.metadata import version
 

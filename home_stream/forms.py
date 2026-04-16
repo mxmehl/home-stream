@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Forms handler for the media browser"""
+"""Forms handler for the media browser."""
 
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField

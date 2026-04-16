@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Configuration for pytest fixtures"""
+"""Configuration for pytest fixtures."""
 
 import os
 import shutil
@@ -32,7 +32,7 @@ def create_temp_config(content: dict) -> str:
 
 @pytest.fixture(name="temp_media_root")
 def fixture_temp_media_root():
-    """Create a temporary directory to act as media_root"""
+    """Create a temporary directory to act as media_root."""
     tmp_dir = tempfile.mkdtemp(prefix="media_")
     yield tmp_dir
     shutil.rmtree(tmp_dir)
@@ -40,8 +40,8 @@ def fixture_temp_media_root():
 
 @pytest.fixture(name="config_file")
 def fixture_config_file(temp_media_root):
-    """Create a temporary config file for testing"""
-    hashed_pw = bcrypt.hashpw("test".encode(), bcrypt.gensalt()).decode()
+    """Create a temporary config file for testing."""
+    hashed_pw = bcrypt.hashpw(b"test", bcrypt.gensalt()).decode()
     config = {
         "users": {"testuser": hashed_pw},
         "video_extensions": ["mp4"],
@@ -57,7 +57,7 @@ def fixture_config_file(temp_media_root):
 
 @pytest.fixture(name="app")
 def fixture_app(config_file):
-    """Create a Flask app for testing"""
+    """Create a Flask app for testing."""
     app = create_app(config_file, debug=True)
     app.config.update(
         {
@@ -65,16 +65,16 @@ def fixture_app(config_file):
             "WTF_CSRF_ENABLED": False,  # Disable CSRF in tests
         }
     )
-    yield app
+    return app
 
 
 @pytest.fixture(name="client")
 def fixture_client(app):
-    """Create a test client for the app"""
+    """Create a test client for the app."""
     return app.test_client()
 
 
-def login_session(sess, app, username="testuser"):
+def login_session(sess, app, username="testuser") -> None:
     """Helper to simulate a logged-in user inside a test session."""
     with app.app_context():
         users = app.config["USERS"]
@@ -86,16 +86,16 @@ def login_session(sess, app, username="testuser"):
 
 @pytest.fixture(name="stream_token")
 def fixture_stream_token():
-    """Get the default stream token for 'testuser'"""
+    """Get the default stream token for 'testuser'."""
     return get_stream_token("testuser")
 
 
 @pytest.fixture(name="media_file")
 def fixture_media_file(app):
-    """
-    Create a minimal valid MP3 file inside MEDIA_ROOT with spaces in filename and parent directories
-    """
+    """Create a minimal valid MP3 file inside MEDIA_ROOT.
 
+    Uses spaces in filename and parent directories.
+    """
     # Create a temporary directory with spaces for the media file
     media_root = app.config["MEDIA_ROOT"]
     folder = os.path.join(media_root, "test", "with spaces")
@@ -124,7 +124,7 @@ def fixture_media_file(app):
 
 @pytest.fixture(name="media_file_slugs")
 def fixture_media_file_slugs(media_file, app):
-    """Return both real filename and full slugified path including folders
+    """Return both real filename and full slugified path including folders.
 
     Ex. Return: ('sample testfile 78d9f5a2.mp3', 'test/with_spaces/sample_testfile_78d9f5a2.mp3')
     """

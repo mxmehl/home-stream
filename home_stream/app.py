@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Home Stream Web Application"""
+"""Home Stream Web Application."""
+
+from __future__ import annotations
 
 import argparse
 import logging
-import os
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flask import (
     Flask,
@@ -23,6 +26,10 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+if TYPE_CHECKING:
+    from werkzeug.exceptions import TooManyRequests
+    from werkzeug.wrappers import Response as WerkzeugResponse
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
@@ -55,7 +62,7 @@ def create_app(config_path: str, debug: bool = False) -> Flask:
         )
 
     # Trust headers from reverse proxy (1 layer by default)
-    app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
+    app.wsgi_app = ProxyFix(  # ty: ignore[invalid-assignment]
         app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
     )
 
@@ -83,18 +90,18 @@ def create_app(config_path: str, debug: bool = False) -> Flask:
     return app
 
 
-def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-statements
+def init_routes(app: Flask, limiter: Limiter) -> None:  # noqa: C901, PLR0915
     """Initialize routes for the Flask application."""
 
     # Inject variables into templates
     @app.context_processor
-    def inject_vars():
+    def inject_vars() -> dict:
         return {
             "version_info": get_version_info(),
         }
 
-    def is_authenticated():
-        """Check if the current session matches a valid user and password hash"""
+    def is_authenticated() -> bool:
+        """Check if the current session matches a valid user and password hash."""
         username = session.get("username")
         auth_signature = session.get("auth_signature")
         users = app.config.get("USERS", {})
@@ -108,15 +115,15 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
 
     @app.route("/login", methods=["GET", "POST"])
     @limiter.limit(app.config.get("RATE_LIMIT_LOGIN", ""))
-    def login():
+    def login() -> str | WerkzeugResponse:
         form = LoginForm()
         error = None
         if form.validate_on_submit():
-            username = form.username.data
-            password = form.password.data
+            username = form.username.data or ""
+            password = form.password.data or ""
             if validate_user(username, password):
                 app.logger.info(
-                    f"Login success for user '{username}' from IP {request.remote_addr}"
+                    "Login success for user '%s' from IP %s", username, request.remote_addr
                 )
                 session.clear()
                 session["username"] = username
@@ -125,46 +132,48 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
                 )
                 return redirect(request.args.get("next") or url_for("index"))
 
-            app.logger.warning(f"Login failed for user '{username}' from IP {request.remote_addr}")
+            app.logger.warning(
+                "Login failed for user '%s' from IP %s", username, request.remote_addr
+            )
             error = "Invalid credentials"
         return render_template("login.html", form=form, error=error)
 
     @app.route("/logout")
-    def logout():
+    def logout() -> WerkzeugResponse:
         user = session.get("username")
         if user:
-            app.logger.info(f"User '{user}' logged out from IP {request.remote_addr}")
+            app.logger.info("User '%s' logged out from IP %s", user, request.remote_addr)
         session.clear()
         return redirect(url_for("login"))
 
     @app.route("/")
-    def index():
+    def index() -> WerkzeugResponse:
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
         return redirect(url_for("browse", subpath=""))
 
     @app.route("/browse/", defaults={"subpath": ""})
     @app.route("/browse/<path:subpath>")
-    def browse(subpath):
+    def browse(subpath: str) -> str | WerkzeugResponse:
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
         # Build real and slug paths and breadcrumbs
         parts, real_path, path_context = extract_path_components(subpath)
 
-        if not os.path.isdir(real_path):
+        if not Path(real_path).is_dir():
             abort(404)
 
         # Create a list of folders and files
         folders, files = list_folder_entries_with_stream_urls(
             real_path=real_path,
             slug_parts=parts,
-            username=session.get("username"),
+            username=session.get("username", ""),
         )
 
         # Create a tokenised playlist URL
         playlist_stream_url = build_stream_url(
-            username=session.get("username"),
+            username=session.get("username", ""),
             token=get_stream_token(session["username"]),
             rel_path=subpath,
         )
@@ -179,19 +188,19 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
             playlist_stream_url=playlist_stream_url,
         )
 
-    @app.route("/play/<path:subpath>")
-    def play(subpath):
+    @app.route("/play/<path:subpath>")  # noqa: RET503
+    def play(subpath: str) -> str | WerkzeugResponse:
         if not is_authenticated():
             return redirect(url_for("login", next=request.full_path))
 
         # Extract parts, real path, and context
         parts, real_path, path_context = extract_path_components(subpath)
 
-        username = session.get("username")
+        username = session.get("username", "")
         token = get_stream_token(username)
 
         # Case: path is single media file, please it
-        if os.path.isfile(real_path):
+        if Path(real_path).is_file():
             stream_url = build_stream_url(username, token, "/".join(parts))
             return render_template(
                 "play.html",
@@ -204,7 +213,7 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
             )
 
         # Case: path is folder, play all contained media files
-        if os.path.isdir(real_path):
+        if Path(real_path).is_dir():
             _, files = list_folder_entries_with_stream_urls(
                 real_path=real_path,
                 slug_parts=parts,
@@ -226,13 +235,15 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
 
         abort(404)
 
-    @app.route("/dl-token/<username>/<token>/<path:subpath>")
-    def download_token_auth(username, token, subpath):
+    @app.route("/dl-token/<username>/<token>/<path:subpath>")  # noqa: RET503
+    def download_token_auth(username: str, token: str, subpath: str) -> Response:
         expected = get_stream_token(username)
         if token != expected:
             app.logger.info(
-                f"Invalid dl-token for user '{username}'. "
-                f"Expected '{truncate_secret(expected)}', got '{token}'"
+                "Invalid dl-token for user '%s'. Expected '%s', got '%s'",
+                username,
+                truncate_secret(expected),
+                token,
             )
             abort(403)
 
@@ -240,12 +251,12 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
         parts, real_path, _ = extract_path_components(subpath)
 
         # If the path is a file, send it (download)
-        if os.path.isfile(real_path):
+        if Path(real_path).is_file():
             return send_file(real_path)
 
         # If the path is a folder, create a M3U8 playlist containing all stream URLs of the
         # contained files
-        if os.path.isdir(real_path):
+        if Path(real_path).is_dir():
             # Create a list of folders and files
             _, files = list_folder_entries_with_stream_urls(
                 real_path=real_path,
@@ -268,10 +279,10 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
 
     # ERROR HANDLERS
     @app.errorhandler(429)
-    def ratelimit_handler(e):
+    def ratelimit_handler(e: TooManyRequests) -> tuple[str, int]:
         ip = request.remote_addr
         endpoint = request.endpoint
-        app.logger.warning(f"Rate limit exceeded from IP {ip} on {endpoint}: {e.description}")
+        app.logger.warning("Rate limit exceeded from IP %s on %s: %s", ip, endpoint, e.description)
 
         # Nice error message for login route
         if endpoint == "login":
@@ -287,7 +298,7 @@ def init_routes(app: Flask, limiter: Limiter):  # pylint: disable=too-many-state
         return "Too many requests. Please slow down.", 429
 
 
-def main():
+def main() -> None:
     """Main entry point for the application."""
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -309,7 +320,7 @@ def main():
     args = parser.parse_args()
 
     # Create the app instance with the Flask development server
-    app = create_app(config_path=os.path.abspath(args.config_file), debug=args.debug)
+    app = create_app(config_path=str(Path(args.config_file).resolve()), debug=args.debug)
     app.run(debug=args.debug, host=args.host, port=args.port)
 
 

@@ -182,3 +182,6 @@ pyrightconfig.json
 # Local cache, log, build and config files
 config.yaml
 docker-compose.yaml
+
+# Local media files
+data

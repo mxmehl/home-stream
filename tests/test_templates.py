@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Tests for the Home Stream HTML templates"""
+"""Tests for the Home Stream HTML templates."""
 
 import re
 from os.path import dirname
@@ -14,8 +14,8 @@ from home_stream.helpers import get_version_info
 from tests.conftest import login_session
 
 
-def test_login_form_has_fields(client):
-    """Ensure the login page renders a form with username and password fields"""
+def test_login_form_has_fields(client) -> None:
+    """Ensure the login page renders a form with username and password fields."""
     response = client.get("/login")
     soup = BeautifulSoup(response.data, "html.parser")
     form = soup.find("form")
@@ -24,8 +24,8 @@ def test_login_form_has_fields(client):
     assert form.find("input", {"name": "password"})
 
 
-def test_browse_page_shows_file_actions(client, app, media_file):  # pylint: disable=unused-argument
-    """Ensure browse.html shows download, play, and copy buttons for media files"""
+def test_browse_page_shows_file_actions(client, app, media_file) -> None:
+    """Ensure browse.html shows download, play, and copy buttons for media files."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -39,8 +39,8 @@ def test_browse_page_shows_file_actions(client, app, media_file):  # pylint: dis
     assert any("Copy Stream URL" in label for label in labels)
 
 
-def test_play_page_embeds_media(client, app, media_file_slugs):
-    """Ensure /play/<file> renders the correct media tag"""
+def test_play_page_embeds_media(client, app, media_file_slugs) -> None:
+    """Ensure /play/<file> renders the correct media tag."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -51,8 +51,8 @@ def test_play_page_embeds_media(client, app, media_file_slugs):
     assert soup.find("audio") or soup.find("video")
 
 
-def test_logout_button_shown_when_logged_in(client, app):
-    """Logout button should be visible when user is authenticated"""
+def test_logout_button_shown_when_logged_in(client, app) -> None:
+    """Logout button should be visible when user is authenticated."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -63,16 +63,16 @@ def test_logout_button_shown_when_logged_in(client, app):
     assert "Logout" in logout_form.text
 
 
-def test_logout_button_hidden_when_not_logged_in(client):
-    """Logout button should not be present when not authenticated"""
+def test_logout_button_hidden_when_not_logged_in(client) -> None:
+    """Logout button should not be present when not authenticated."""
     response = client.get("/login")
     soup = BeautifulSoup(response.data, "html.parser")
     logout_form = soup.find("form", {"action": "/logout"})
     assert logout_form is None
 
 
-def test_play_page_has_correct_stream_url(client, app, media_file_slugs, stream_token):
-    """Ensure /play/<file> embeds the correct dl-token stream URL"""
+def test_play_page_has_correct_stream_url(client, app, media_file_slugs, stream_token) -> None:
+    """Ensure /play/<file> embeds the correct dl-token stream URL."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -88,7 +88,7 @@ def test_play_page_has_correct_stream_url(client, app, media_file_slugs, stream_
     assert stream_url.startswith(f"http://localhost/dl-token/testuser/{stream_token}/")
 
 
-def test_play_page_stream_url_works(client, app, media_file_slugs, stream_token):
+def test_play_page_stream_url_works(client, app, media_file_slugs, stream_token) -> None:
     """Ensure the stream URL embedded in /play works when fetched."""
     with client.session_transaction() as sess:
         login_session(sess, app)
@@ -112,8 +112,8 @@ def test_play_page_stream_url_works(client, app, media_file_slugs, stream_token)
     assert stream_response.data.startswith(b"ID3")
 
 
-def test_browse_stream_url_copy_button(client, app, media_file_slugs, stream_token):
-    """Ensure the Copy Stream URL button includes full valid stream URL"""
+def test_browse_stream_url_copy_button(client, app, media_file_slugs, stream_token) -> None:
+    """Ensure the Copy Stream URL button includes full valid stream URL."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -126,7 +126,8 @@ def test_browse_stream_url_copy_button(client, app, media_file_slugs, stream_tok
 
     button = buttons[0]
     onclick = button.get("onclick")
-    assert onclick and "copyToClipboard(" in onclick
+    assert onclick
+    assert "copyToClipboard(" in onclick
 
     match = re.search(r"copyToClipboard\('([^']+)'", onclick)
     assert match, "Stream URL not found in onclick"
@@ -137,8 +138,8 @@ def test_browse_stream_url_copy_button(client, app, media_file_slugs, stream_tok
     )
 
 
-def test_footer_version_displayed_when_logged_in(client, app):
-    """Ensure footer shows version info when user is logged in"""
+def test_footer_version_displayed_when_logged_in(client, app) -> None:
+    """Ensure footer shows version info when user is logged in."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -151,8 +152,8 @@ def test_footer_version_displayed_when_logged_in(client, app):
     assert get_version_info() in footer.text  # Version number appears
 
 
-def test_footer_version_hidden_when_not_logged_in(client):
-    """Ensure footer does not show version info when user is not logged in"""
+def test_footer_version_hidden_when_not_logged_in(client) -> None:
+    """Ensure footer does not show version info when user is not logged in."""
     response = client.get("/", follow_redirects=True)
     soup = BeautifulSoup(response.data, "html.parser")
 
@@ -162,8 +163,8 @@ def test_footer_version_hidden_when_not_logged_in(client):
     assert get_version_info() not in footer.text  # Version number appears
 
 
-def test_browse_page_shows_breadcrumbs(client, app, media_file_slugs):
-    """Ensure /browse/<subfolder> displays correct breadcrumbs and headline"""
+def test_browse_page_shows_breadcrumbs(client, app, media_file_slugs) -> None:
+    """Ensure /browse/<subfolder> displays correct breadcrumbs and headline."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -184,8 +185,8 @@ def test_browse_page_shows_breadcrumbs(client, app, media_file_slugs):
     assert "with spaces" in headline.text
 
 
-def test_play_page_shows_breadcrumbs(client, app, media_file_slugs):
-    """Ensure /play/<file> displays breadcrumbs"""
+def test_play_page_shows_breadcrumbs(client, app, media_file_slugs) -> None:
+    """Ensure /play/<file> displays breadcrumbs."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -203,10 +204,8 @@ def test_play_page_shows_breadcrumbs(client, app, media_file_slugs):
     assert "with spaces" in breadcrumbs.text
 
 
-def test_play_folder_renders_playlist_view(
-    client, app, media_file_slugs
-):  # pylint: disable=unused-argument
-    """Ensure /play/<folder> renders playlist player when path is a directory"""
+def test_play_folder_renders_playlist_view(client, app, media_file_slugs) -> None:
+    """Ensure /play/<folder> renders playlist player when path is a directory."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -220,10 +219,8 @@ def test_play_folder_renders_playlist_view(
     assert "Now Playing" in soup.text
 
 
-def test_browse_page_playlist_url_present(
-    client, app, stream_token, media_file_slugs
-):  # pylint: disable=unused-argument
-    """Ensure the download playlist button uses the .m3u8 stream URL"""
+def test_browse_page_playlist_url_present(client, app, stream_token, media_file_slugs) -> None:
+    """Ensure the download playlist button uses the .m3u8 stream URL."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -238,8 +235,10 @@ def test_browse_page_playlist_url_present(
     )
 
 
-def test_browse_page_playlist_stream_url_button(client, app, media_file_slugs, stream_token):
-    """Ensure the playlist stream URL works when fetched"""
+def test_browse_page_playlist_stream_url_button(
+    client, app, media_file_slugs, stream_token
+) -> None:
+    """Ensure the playlist stream URL works when fetched."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 
@@ -255,7 +254,8 @@ def test_browse_page_playlist_stream_url_button(client, app, media_file_slugs, s
 
     button = buttons[0]
     onclick = button.get("onclick")
-    assert onclick and "copyToClipboard(" in onclick
+    assert onclick
+    assert "copyToClipboard(" in onclick
 
     match = re.search(r"copyToClipboard\('([^']+)'", onclick)
     assert match, "Stream URL not found in onclick"
@@ -266,8 +266,8 @@ def test_browse_page_playlist_stream_url_button(client, app, media_file_slugs, s
     )
 
 
-def test_play_folder_with_multiple_files(client, app, media_file_slugs, stream_token):
-    """Ensure /play/<folder> renders a playlist with correct stream URLs"""
+def test_play_folder_with_multiple_files(client, app, media_file_slugs, stream_token) -> None:
+    """Ensure /play/<folder> renders a playlist with correct stream URLs."""
     with client.session_transaction() as sess:
         login_session(sess, app)
 

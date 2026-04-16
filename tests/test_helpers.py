@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Tests for the Home Stream application helpers"""
+"""Tests for the Home Stream application helpers."""
 
 import os
 import re
@@ -28,8 +28,8 @@ from home_stream.helpers import (
 from tests.conftest import create_temp_config
 
 
-def test_get_stream_token_is_consistent(app):
-    """Test that get_stream_token returns consistent output for same input"""
+def test_get_stream_token_is_consistent(app) -> None:
+    """Test that get_stream_token returns consistent output for same input."""
     with app.app_context():
         token1 = get_stream_token("testuser")
         token2 = get_stream_token("testuser")
@@ -37,21 +37,21 @@ def test_get_stream_token_is_consistent(app):
         assert len(token1) == 16
 
 
-def test_truncate_secret_behavior():
-    """Ensure truncate_secret masks beyond the specified length"""
+def test_truncate_secret_behavior() -> None:
+    """Ensure truncate_secret masks beyond the specified length."""
     original = "verylongsecret"
     truncated = truncate_secret(original, chars=4)
     assert truncated == "very**********"
 
 
-def test_truncate_secret_short_value():
-    """Truncation should not alter short secrets"""
+def test_truncate_secret_short_value() -> None:
+    """Truncation should not alter short secrets."""
     short = "abc"
     assert truncate_secret(short, chars=8) == "abc"
 
 
-def test_secure_path_allows_normal_path(app):
-    """Ensure secure_path returns resolved path for valid subpath"""
+def test_secure_path_allows_normal_path(app) -> None:
+    """Ensure secure_path returns resolved path for valid subpath."""
     with app.app_context():
         media_root = current_app.config["MEDIA_ROOT"]
         subpath = "example"
@@ -62,44 +62,44 @@ def test_secure_path_allows_normal_path(app):
         assert resolved.endswith("example")
 
 
-def test_secure_path_blocks_traversal(app):
-    """Ensure secure_path blocks ../ path traversal attempts"""
+def test_secure_path_blocks_traversal(app) -> None:
+    """Ensure secure_path blocks ../ path traversal attempts."""
     with app.app_context():
         with pytest.raises(Exception) as excinfo:
             secure_path("../etc/passwd")
         assert "403" in str(excinfo.value)
 
 
-def test_validate_user_success(app):
-    """Return True if username and password match config"""
+def test_validate_user_success(app) -> None:
+    """Return True if username and password match config."""
     with app.app_context():
         assert validate_user("testuser", "test") is True
 
 
-def test_validate_user_failure(app):
-    """Return False for unknown user or wrong password"""
+def test_validate_user_failure(app) -> None:
+    """Return False for unknown user or wrong password."""
     with app.app_context():
         assert validate_user("nonexistent", "test") is False
         assert validate_user("testuser", "wrongpassword") is False
 
 
-def test_file_type_detection(app):
-    """Correctly detect audio vs video types based on extension"""
+def test_file_type_detection(app) -> None:
+    """Correctly detect audio vs video types based on extension."""
     with app.app_context():
         assert file_type("song.mp3") == "audio"
         assert file_type("video.mp4") == "video"
         assert file_type("unknown.xyz") == "video"  # fallback if not in audio list
 
 
-def test_get_stream_token_missing_secret(app):
-    """Raise KeyError if STREAM_SECRET is not set in config"""
+def test_get_stream_token_missing_secret(app) -> None:
+    """Raise KeyError if STREAM_SECRET is not set in config."""
     with app.app_context():
         del app.config["STREAM_SECRET"]
         with pytest.raises(KeyError):
             get_stream_token("testuser")
 
 
-def test_load_config_raises_if_default_secret_used():
+def test_load_config_raises_if_default_secret_used() -> None:
     """Raise ValueError if secret_key is left as the insecure default."""
     config = {
         "users": {"testuser": "fake"},
@@ -120,7 +120,7 @@ def test_load_config_raises_if_default_secret_used():
 
 
 @pytest.mark.parametrize("missing_key", REQUIRED_CONFIG_KEYS)
-def test_load_config_raises_when_key_is_missing(missing_key):
+def test_load_config_raises_when_key_is_missing(missing_key) -> None:
     """Raise KeyError if any required config key is missing."""
     # Start with a valid config
     config = {
@@ -143,9 +143,8 @@ def test_load_config_raises_when_key_is_missing(missing_key):
         os.remove(path)
 
 
-def test_load_config_successfully_sets_flask_config(app):
-    """Verify load_config populates Flask config properly"""
-
+def test_load_config_successfully_sets_flask_config(app) -> None:
+    """Verify load_config populates Flask config properly."""
     with app.app_context():
         assert current_app.secret_key == "testsecret"
         assert current_app.secret_key == current_app.config["SECRET_KEY"]
@@ -153,50 +152,50 @@ def test_load_config_successfully_sets_flask_config(app):
         assert current_app.config["MEDIA_EXTENSIONS"] == ["mp4", "mp3"]
 
 
-def test_verify_password_success(app, client):
-    """verify_password should return the username if password matches"""
-    with app.app_context():
-        with client:
-            result = verify_password("testuser", "test")
-            assert result == "testuser"
-            assert hasattr(request, "password")
-            assert request.password == "test"
+def test_verify_password_success(app, client) -> None:
+    """verify_password should return the username if password matches."""
+    with app.app_context(), client:
+        result = verify_password("testuser", "test")
+        assert result == "testuser"
+        assert hasattr(request, "password")
+        assert request.password == "test"
 
 
-def test_verify_password_failure(app):
-    """verify_password returns None if user or password is wrong"""
+def test_verify_password_failure(app) -> None:
+    """verify_password returns None if user or password is wrong."""
     with app.app_context():
         assert verify_password("unknown", "test") is None
         assert verify_password("testuser", "wrong") is None
 
 
-def test_get_version_info():
-    """Test that get_version_info returns the expected version format"""
+def test_get_version_info() -> None:
+    """Test that get_version_info returns the expected version format."""
     version_info = get_version_info()
 
     # Expect format like "0.4.3 (abc123)"
-    assert re.match(
-        r"^\d+\.\d+\.\d+ \([a-z0-9]+\)$", version_info
-    ), f"Unexpected version format: {version_info}"
+    assert re.match(r"^\d+\.\d+\.\d+ \([a-z0-9]+\)$", version_info), (
+        f"Unexpected version format: {version_info}"
+    )
 
 
-def test_get_version_info_git_failure(app, monkeypatch):
-    """Test that get_version_info handles git failure gracefully"""
+def test_get_version_info_git_failure(app, monkeypatch) -> None:
+    """Test that get_version_info handles git failure gracefully."""
     # Simulate subprocess raising an exception
     monkeypatch.setattr(
-        "subprocess.check_output", lambda cmd: (_ for _ in ()).throw(Exception("git error"))
+        "subprocess.check_output",
+        lambda _cmd: (_ for _ in ()).throw(Exception("git error")),
     )
 
     with app.app_context():
         version_info = get_version_info()
 
-    assert version_info.endswith(
-        "(unknown commit)"
-    ), f"Unexpected version info on git failure: {version_info}"
+    assert version_info.endswith("(unknown commit)"), (
+        f"Unexpected version info on git failure: {version_info}"
+    )
 
 
-def test_deslugify_success(tmp_path):
-    """deslugify should find and return the matching real filename"""
+def test_deslugify_success(tmp_path) -> None:
+    """Deslugify should find and return the matching real filename."""
     # Create a file with spaces
     filename = "My Test File.mp3"
     file_path = tmp_path / filename
@@ -209,8 +208,8 @@ def test_deslugify_success(tmp_path):
     assert found == filename
 
 
-def test_deslugify_raises_file_not_found(tmp_path):
-    """deslugify should raise FileNotFoundError if no file matches the slug"""
+def test_deslugify_raises_file_not_found(tmp_path) -> None:
+    """Deslugify should raise FileNotFoundError if no file matches the slug."""
     # Empty directory -> no match possible
     empty_dir = tmp_path
 
@@ -220,8 +219,8 @@ def test_deslugify_raises_file_not_found(tmp_path):
     assert "No match for slug" in str(excinfo.value)
 
 
-def test_prepare_path_context_generates_breadcrumbs():
-    """Ensure prepare_path_context returns expected structure"""
+def test_prepare_path_context_generates_breadcrumbs() -> None:
+    """Ensure prepare_path_context returns expected structure."""
     real_path = "/media/data/Shows/Battlestar Galactica/Season 1"
     slug_parts = ["Shows", "Battlestar_Galactica", "Season_1"]
     media_root = "/media/data"
@@ -238,8 +237,8 @@ def test_prepare_path_context_generates_breadcrumbs():
     ]
 
 
-def test_stream_token_changes_when_password_changes(app):
-    """Ensure that changing the user's password results in a new stream token"""
+def test_stream_token_changes_when_password_changes(app) -> None:
+    """Ensure that changing the user's password results in a new stream token."""
     with app.app_context():
         users = current_app.config["USERS"]
 
@@ -255,14 +254,13 @@ def test_stream_token_changes_when_password_changes(app):
         assert original_token != new_token, "Stream token did not change after password update"
 
 
-def test_get_stream_token_raises_for_missing_user(app):
-    """Ensure get_stream_token raises ValueError if user does not exist"""
-    with app.app_context():
-        with pytest.raises(ValueError, match="User 'unknownuser' not found"):
-            get_stream_token("unknownuser")
+def test_get_stream_token_raises_for_missing_user(app) -> None:
+    """Ensure get_stream_token raises ValueError if user does not exist."""
+    with app.app_context(), pytest.raises(ValueError, match="User 'unknownuser' not found"):
+        get_stream_token("unknownuser")
 
 
-def test_compute_session_signature_changes_on_password_change():
+def test_compute_session_signature_changes_on_password_change() -> None:
     """Ensure that session signature changes when the password hash changes."""
     username = "testuser"
     secret = "testsecret"
@@ -275,7 +273,7 @@ def test_compute_session_signature_changes_on_password_change():
     assert sig_old != sig_new, "Session signature did not change after password update"
 
 
-def test_compute_session_signature_consistency():
+def test_compute_session_signature_consistency() -> None:
     """Ensure the same inputs produce the same session signature."""
     username = "testuser"
     password_hash = "some_hash"

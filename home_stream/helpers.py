@@ -4,6 +4,8 @@
 
 """Helper functions for the media browser."""
 
+from __future__ import annotations
+
 import hashlib
 import hmac
 import os
@@ -35,7 +37,8 @@ def load_config(app: Flask, filename: str) -> None:
     # Check whether mandatory keys are filled
     for required_key in REQUIRED_CONFIG_KEYS:
         if required_key not in config:
-            raise KeyError(f"Missing '{required_key}' key in config file.")
+            msg = f"Missing '{required_key}' key in config file."
+            raise KeyError(msg)
     # Combine video and audio extensions
     config["media_extensions"] = config.get("video_extensions", []) + config.get(
         "audio_extensions", []
@@ -50,8 +53,9 @@ def load_config(app: Flask, filename: str) -> None:
             app.config[key.upper()] = value
 
     # Error when using default secret key
-    if app.secret_key == "CHANGE_ME_IN_FAVOUR_OF_A_LONG_PASSWORD":
-        raise ValueError("You must change the default secret_key in the config file.")
+    if app.secret_key == "CHANGE_ME_IN_FAVOUR_OF_A_LONG_PASSWORD":  # noqa: S105
+        msg = "You must change the default secret_key in the config file."
+        raise ValueError(msg)
 
     # Set defaults
     app.config["RATE_LIMIT_STORAGE_URI"] = app.config.get("RATE_LIMIT_STORAGE_URI", "memory://")
@@ -76,30 +80,30 @@ def secure_path(subpath: str) -> str:
         resolved_path == root or resolved_path.startswith(root + os.sep) for root in allowed_roots
     ):
         current_app.logger.warning(
-            f"Blocked path traversal or symlink escape: {subpath} → {resolved_path}"
+            "Blocked path traversal or symlink escape: %s → %s", subpath, resolved_path
         )
         abort(403)
 
     return resolved_path
 
 
-def file_type(filename):
+def file_type(filename: str) -> str:
     """Determine the file type based on its extension."""
     ext = os.path.splitext(filename)[1].lower().strip(".")
     return "audio" if ext in current_app.config["AUDIO_EXTENSIONS"] else "video"
 
 
-def verify_password(username, password):
+def verify_password(username: str, password: str) -> str | None:
     """Verify the provided username and password."""
     if username in current_app.config["USERS"] and checkpw(
         password.encode("utf-8"), current_app.config["USERS"].get(username).encode("utf-8")
     ):
-        request.password = password
+        request.password = password  # ty: ignore[unresolved-attribute]
         return username
     return None
 
 
-def validate_user(username, password):
+def validate_user(username: str, password: str) -> bool:
     """Used for session-based auth (login form)."""
     if username in current_app.config["USERS"]:
         return checkpw(
@@ -109,37 +113,38 @@ def validate_user(username, password):
 
 
 def get_stream_token(username: str, chars: int = 16) -> str:
-    """Generate a permanent token for streaming based on username, password hash, and secret key"""
+    """Generate a permanent token for streaming based on username, password hash, and secret key."""
     secret = current_app.config["STREAM_SECRET"]
     users = current_app.config.get("USERS", {})
 
     password_hash = users.get(username)
     if not password_hash:
-        raise ValueError(f"User '{username}' not found when generating stream token.")
+        msg = f"User '{username}' not found when generating stream token."
+        raise ValueError(msg)
 
     token_input = f"{username}:{password_hash}"
     return hmac.new(secret.encode(), token_input.encode(), hashlib.sha256).hexdigest()[:chars]
 
 
-def compute_session_signature(username, password_hash, secret):
+def compute_session_signature(username: str, password_hash: str, secret: str) -> str:
     """Compute a session signature based on username and password hash."""
     data = f"{username}:{password_hash}"
     return hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
 
 
 def truncate_secret(secret: str, chars: int = 8) -> str:
-    """Truncate the secret key to a specified length"""
+    """Truncate the secret key to a specified length."""
     if len(secret) > chars:
         return secret[:chars] + "*" * (len(secret) - chars)
     return secret
 
 
-def get_version_info():
-    """Get the version information of the application"""
+def get_version_info() -> str:
+    """Get the version information of the application."""
     # Get short git commit hash if available
     try:
-        commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode().strip()
-    except Exception:  # pylint: disable=broad-exception-caught
+        commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode().strip()  # noqa: S607
+    except Exception:  # noqa: BLE001
         current_app.logger.debug("Failed to get git commit hash.", exc_info=True)
         commit = "unknown commit"
 
@@ -147,22 +152,22 @@ def get_version_info():
 
 
 def slugify(name: str) -> str:
-    """Turn a filename into a URL-safe slug (preserving readability)"""
+    """Turn a filename into a URL-safe slug (preserving readability)."""
     name = name.strip()
     name = re.sub(r"[\s]+", "_", name)  # Replace spaces with underscores
-    name = re.sub(r"[^a-zA-Z0-9_&\-\.]", "", name)  # Keep only safe characters
-    return name
+    return re.sub(r"[^a-zA-Z0-9_&\-\.]", "", name)  # Keep only safe characters
 
 
 def deslugify(slug: str, directory: str) -> str:
-    """Find real filename in a directory matching the slug"""
+    """Find real filename in a directory matching the slug."""
     for fname in os.listdir(directory):
         if slugify(fname) == slug:
             return fname
-    raise FileNotFoundError(f"No match for slug '{slug}' in '{directory}'")
+    msg = f"No match for slug '{slug}' in '{directory}'"
+    raise FileNotFoundError(msg)
 
 
-def resolve_real_path_from_slugs(slug_parts):
+def resolve_real_path_from_slugs(slug_parts: list[str]) -> str:
     """
     Resolve a slugified URL path into the real filesystem path.
 
@@ -190,13 +195,10 @@ def resolve_real_path_from_slugs(slug_parts):
         for entry in entries:
             full_entry = os.path.join(current_dir, entry)
 
-            if slugify(entry) == slug:
-                # Intermediate parts must be directories
-                # Last part can be either file or directory
-                if is_last or os.path.isdir(full_entry):
-                    real_parts.append(entry)
-                    current_dir = full_entry
-                    break
+            if slugify(entry) == slug and (is_last or os.path.isdir(full_entry)):
+                real_parts.append(entry)
+                current_dir = full_entry
+                break
         else:
             # No match found for this slug part → abort
             abort(404)
@@ -204,7 +206,7 @@ def resolve_real_path_from_slugs(slug_parts):
     return os.path.join(secure_path(""), *real_parts)
 
 
-def extract_path_components(subpath):
+def extract_path_components(subpath: str) -> tuple[list[str], str, dict]:
     """Extract path components from a slugified subpath.
 
     This function splits the subpath into its individual parts,
@@ -255,14 +257,14 @@ def list_folder_entries_with_stream_urls(
 
         # Check if entry is a directory and not hidden
         if os.path.isdir(full) and not dir_element.startswith("."):
-            folder_slug_path = "/".join(slug_parts + [entry_slug])
+            folder_slug_path = "/".join([*slug_parts, entry_slug])
             folders.append({"name": dir_element, "slug_path": folder_slug_path})
 
         # Check if entry is a file with a valid media extension
         elif os.path.isfile(full):
             ext = os.path.splitext(dir_element)[1].lower().strip(".")
             if ext in current_app.config["MEDIA_EXTENSIONS"]:
-                file_slug_path = "/".join(slug_parts + [entry_slug])
+                file_slug_path = "/".join([*slug_parts, entry_slug])
                 stream_url = build_stream_url(username, get_stream_token(username), file_slug_path)
                 files.append(
                     {"name": dir_element, "slug_path": file_slug_path, "stream_url": stream_url}
@@ -275,9 +277,8 @@ def list_folder_entries_with_stream_urls(
     return folders, files
 
 
-def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
-    """
-    Construct context information for templates based on a resolved real path and its slug parts.
+def prepare_path_context(real_path: str, slug_parts: list, media_root: str) -> dict:
+    """Construct context information for templates based on a resolved real path and its slug parts.
 
     This includes:
     - The current item's name (used as the headline)
@@ -289,17 +290,22 @@ def prepare_path_context(real_path: str, slug_parts: list, media_root: str):
 
     Args:
         real_path (str): The absolute filesystem path to the file or directory.
-        slug_parts (list): List of URL slug parts (e.g., ['Shows', 'Battlestar_Galactica']).
+        slug_parts (list): List of URL slug parts
+            (e.g., ['Shows', 'Battlestar_Galactica']).
         media_root (str): The absolute path to the media root directory.
 
     Returns:
-        dict: {
-            "slugified_path": str,         # e.g., "Shows/Battlestar_Galactica"
-            "display_path": str,           # e.g., "Shows/Battlestar Galactica"
-            "breadcrumb_parts": List[dict],# e.g., [{"name": "Overview", "slug": ""}, # {"name": "Shows", "slug": "Shows"}]
-            "current_name": str            # e.g., "Battlestar Galactica"
-        }
-    """  # pylint: disable=line-too-long
+        dict: A context dictionary with keys slugified_path, display_path,
+            breadcrumb_parts, and current_name. Example:
+            ```
+            {
+                "slugified_path": str,         # e.g., "Shows/Battlestar_Galactica"
+                "display_path": str,           # e.g., "Shows/Battlestar Galactica"
+                "breadcrumb_parts": List[dict],# e.g., [{"name": "Overview", "slug": ""}, # {"name": "Shows", "slug": "Shows"}]
+                "current_name": str            # e.g., "Battlestar Galactica"
+            }
+            ```
+    """  # noqa: E501
     # Join slugified parts back into a path string
     slugified_path = "/".join(slug_parts) if slug_parts else ""
 
