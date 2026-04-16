@@ -151,6 +151,11 @@ def get_version_info() -> str:
     return f"{__version__} ({commit})"
 
 
+def sanitize_filename(name: str) -> str:
+    """Replace surrogate characters in filenames that cannot be encoded as UTF-8."""
+    return name.encode("utf-8", "surrogateescape").decode("utf-8", "replace")
+
+
 def slugify(name: str) -> str:
     """Turn a filename into a URL-safe slug (preserving readability)."""
     name = name.strip()
@@ -258,7 +263,7 @@ def list_folder_entries_with_stream_urls(
         # Check if entry is a directory and not hidden
         if os.path.isdir(full) and not dir_element.startswith("."):
             folder_slug_path = "/".join([*slug_parts, entry_slug])
-            folders.append({"name": dir_element, "slug_path": folder_slug_path})
+            folders.append({"name": sanitize_filename(dir_element), "slug_path": folder_slug_path})
 
         # Check if entry is a file with a valid media extension
         elif os.path.isfile(full):
@@ -267,7 +272,11 @@ def list_folder_entries_with_stream_urls(
                 file_slug_path = "/".join([*slug_parts, entry_slug])
                 stream_url = build_stream_url(username, get_stream_token(username), file_slug_path)
                 files.append(
-                    {"name": dir_element, "slug_path": file_slug_path, "stream_url": stream_url}
+                    {
+                        "name": sanitize_filename(dir_element),
+                        "slug_path": file_slug_path,
+                        "stream_url": stream_url,
+                    }
                 )
 
     # Sort entries alphabetically by name (case-insensitive)
@@ -316,7 +325,7 @@ def prepare_path_context(real_path: str, slug_parts: list, media_root: str) -> d
     if display_path == ".":
         display_parts = []
     else:
-        display_parts = [p for p in display_path.strip("/").split("/") if p]
+        display_parts = [sanitize_filename(p) for p in display_path.strip("/").split("/") if p]
 
     # Build breadcrumb from all parts except the last (shown as headline)
     breadcrumb_parts = [
