@@ -190,3 +190,54 @@ def test_dl_token_playlist_invalid_path(client, app, stream_token) -> None:
     url = f"/dl-token/testuser/{stream_token}/nonexistent_folder"
     response = client.get(url)
     assert response.status_code == 404
+
+
+# --- Non-ASCII filename route tests ---
+# These test real-world filenames with characters like en-dashes and parentheses
+# that previously caused UnicodeEncodeError in the Docker container.
+
+
+def test_browse_nonascii_folder(client, app, media_file_nonascii) -> None:
+    """Browse a folder whose name contains non-ASCII characters (en-dash)."""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get("/browse/Filme/The_Movie__Part_II")
+    assert response.status_code == 200
+    assert "Part 2" in response.data.decode("utf-8")
+
+
+def test_play_nonascii_file(client, app, media_file_nonascii_slugs) -> None:
+    """Play route works for files with non-ASCII characters in the name."""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    _, slugified_path = media_file_nonascii_slugs
+    response = client.get(f"/play/{slugified_path}")
+    assert response.status_code == 200
+    assert b"Player" in response.data
+
+
+def test_dl_token_nonascii_file(client, app, media_file_nonascii_slugs, stream_token) -> None:
+    """dl-token route serves files with non-ASCII characters without crashing."""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    _, slugified_path = media_file_nonascii_slugs
+    url = f"/dl-token/testuser/{stream_token}/{slugified_path}"
+    response = client.get(url)
+
+    assert response.status_code == 200
+
+
+def test_dl_token_nonascii_playlist(client, app, media_file_nonascii, stream_token) -> None:
+    """dl-token route returns a playlist for a non-ASCII folder without crashing."""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    url = f"/dl-token/testuser/{stream_token}/Filme/The_Movie__Part_II"
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert response.mimetype == "audio/mpegurl"
+    assert b"#EXTM3U" in response.data

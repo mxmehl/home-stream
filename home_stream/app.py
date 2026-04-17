@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -42,6 +43,7 @@ from home_stream.helpers import (
     get_version_info,
     list_folder_entries_with_stream_urls,
     load_config,
+    sanitize_filename,
     truncate_secret,
     validate_user,
 )
@@ -54,6 +56,18 @@ def create_app(config_path: str, debug: bool = False) -> Flask:
     app = Flask(__name__)
     app.debug = debug
     load_config(app, config_path)
+
+    # Warn if the filesystem encoding is not UTF-8 (common in Docker without LANG=C.UTF-8).
+    # Non-UTF-8 encoding causes surrogate characters in filenames, breaking template rendering
+    # and file downloads.
+    fs_encoding = sys.getfilesystemencoding()
+    if fs_encoding.lower() not in ("utf-8", "utf8"):
+        app.logger.warning(
+            "Filesystem encoding is '%s', not UTF-8. "
+            "Non-ASCII filenames may cause errors. "
+            "Set LANG=C.UTF-8 in your environment (e.g. in Dockerfile).",
+            fs_encoding,
+        )
 
     if not app.debug:
         logging.basicConfig(
@@ -252,7 +266,10 @@ def init_routes(app: Flask, limiter: Limiter) -> None:  # noqa: C901, PLR0915
 
         # If the path is a file, send it (download)
         if Path(real_path).is_file():
-            return send_file(real_path)
+            return send_file(
+                real_path,
+                download_name=sanitize_filename(Path(real_path).name),
+            )
 
         # If the path is a folder, create a M3U8 playlist containing all stream URLs of the
         # contained files

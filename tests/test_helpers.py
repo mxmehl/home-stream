@@ -19,6 +19,7 @@ from home_stream.helpers import (
     get_version_info,
     load_config,
     prepare_path_context,
+    sanitize_filename,
     secure_path,
     slugify,
     truncate_secret,
@@ -283,3 +284,58 @@ def test_compute_session_signature_consistency() -> None:
     sig2 = compute_session_signature(username, password_hash, secret)
 
     assert sig1 == sig2, "Session signature is not deterministic"
+
+
+# --- sanitize_filename tests ---
+
+
+def test_sanitize_filename_ascii_unchanged() -> None:
+    """Plain ASCII filenames pass through unchanged."""
+    assert sanitize_filename("hello.mp4") == "hello.mp4"
+
+
+def test_sanitize_filename_valid_utf8_unchanged() -> None:
+    """Valid UTF-8 non-ASCII filenames pass through unchanged."""
+    assert sanitize_filename("The Movie \u2013 Part 2.mkv") == "The Movie \u2013 Part 2.mkv"
+
+
+def test_sanitize_filename_replaces_surrogates() -> None:
+    """Surrogate characters (from non-UTF-8 bytes on disk) are replaced with \ufffd."""
+    # Simulate what os.listdir() produces for a Latin-1 en-dash (0x96) on an ASCII locale:
+    # Python represents the raw byte as the surrogate \udc96
+    name_with_surrogates = "The Movie \udc96 Part 2.mkv"
+    result = sanitize_filename(name_with_surrogates)
+    assert "\udc96" not in result
+    assert "\ufffd" in result
+    assert result == "The Movie \ufffd Part 2.mkv"
+
+
+def test_sanitize_filename_mixed_surrogates() -> None:
+    """Surrogate bytes that form valid UTF-8 are recovered to the original character."""
+    # \udce2\udc80\udc93 are surrogates for the raw bytes E2 80 93,
+    # which is valid UTF-8 for en-dash (U+2013). surrogateescape recovers them.
+    name = "file\udce2\udc80\udc93name.mp4"
+    result = sanitize_filename(name)
+    assert result == "file\u2013name.mp4"
+
+
+def test_sanitize_filename_truly_invalid_bytes() -> None:
+    """A lone surrogate from genuinely invalid bytes is replaced with \ufffd."""
+    # \udc96 represents raw byte 0x96 (Windows-1252 en-dash), not valid UTF-8
+    name = "file\udc96name.mp4"
+    result = sanitize_filename(name)
+    assert "\udc96" not in result
+    assert "\ufffd" in result
+
+
+def test_prepare_path_context_with_surrogate_in_path() -> None:
+    """Surrogate characters in display path parts are sanitized in breadcrumbs."""
+    real_path = "/media/data/Filme/The Movie \udc96 Part 2"
+    slug_parts = ["Filme", "The_Movie__Part_2"]
+    media_root = "/media/data"
+
+    context = prepare_path_context(real_path, slug_parts, media_root)
+
+    # The display name must not contain surrogates (would crash template rendering)
+    assert "\udc96" not in context["current_name"]
+    assert "\ufffd" in context["current_name"]
