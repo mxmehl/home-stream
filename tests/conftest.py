@@ -122,6 +122,33 @@ def fixture_media_file(app):
     os.remove(file_path)
 
 
+@pytest.fixture(name="media_file_nonascii")
+def fixture_media_file_nonascii(app):
+    """Create a media file with non-ASCII characters (en-dash, parentheses) in its name.
+
+    Mimics real-world filenames like "The Movie \u2013 Part 2 (bad quality).mkv".
+    """
+    media_root = app.config["MEDIA_ROOT"]
+    folder = os.path.join(media_root, "Filme", "The Movie \u2013 Part II")
+    os.makedirs(folder, exist_ok=True)
+
+    filename = "The Movie \u2013 Part 2 (bad quality).mp4"
+    file_path = os.path.join(folder, filename)
+    with open(file_path, "wb") as f:
+        f.write(MINIMAL_MP3)
+
+    return file_path
+
+
+@pytest.fixture(name="media_file_nonascii_slugs")
+def fixture_media_file_nonascii_slugs(media_file_nonascii, app):
+    """Return slugified path for the non-ASCII media file."""
+    rel_path = os.path.relpath(media_file_nonascii, app.config["MEDIA_ROOT"])
+    parts = rel_path.split(os.sep)
+    slugified_parts = [slugify(p) for p in parts]
+    return os.path.basename(media_file_nonascii), "/".join(slugified_parts)
+
+
 @pytest.fixture(name="media_file_slugs")
 def fixture_media_file_slugs(media_file, app):
     """Return both real filename and full slugified path including folders.
