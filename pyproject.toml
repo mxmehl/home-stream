@@ -38,7 +38,6 @@ web = ["uwsgi>=2.0.31,<3"]
 dev = [
     "ruff>=0.15.10",
     "ty>=0.0.29",
-    "bump-my-version>=1.2.4,<2",
     "pytest>=9.0.0,<10",
     "pytest-flask>=1.3.0,<2",
     "pytest-cov>=7.0.0,<8",
@@ -79,37 +78,22 @@ ignore = [
 ]
 [tool.ruff.lint.extend-per-file-ignores]
 "home_stream/helpers.py" = ["PTH"]
-"tests/*" = ["S101", "S105", "S108", "PLR", "PT011", "ANN001", "ANN201", "ARG001", "ARG005", "PLC0415", "PTH"]
+"tests/*" = [
+    "S101",
+    "S105",
+    "S108",
+    "PLR",
+    "PT011",
+    "ANN001",
+    "ANN201",
+    "ARG001",
+    "ARG005",
+    "PLC0415",
+    "PTH",
+]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 # TY settings
 [tool.ty.src]
 include = ["home_stream"]
-
-# Bump-My-Version
-[tool.bumpversion]
-commit = true
-tag = true
-sign_tags = true
-allow_dirty = false
-tag_name = "v{new_version}"
-
-[[tool.bumpversion.files]]
-filename = "pyproject.toml"
-regex = true
-search = "^version = \"{current_version}\""
-replace = "version = \"{new_version}\""
-
-[[tool.bumpversion.files]]
-filename = "uv.lock"
-search = """
-[[package]]
-name = "home-stream"
-version = "{current_version}"
-"""
-replace = """
-[[package]]
-name = "home-stream"
-version = "{new_version}"
-"""
