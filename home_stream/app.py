@@ -19,7 +19,6 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
     session,
     url_for,
 )
@@ -34,6 +33,7 @@ if TYPE_CHECKING:
 
 from home_stream.forms import LoginForm
 from home_stream.helpers import (
+    build_file_download_response,
     build_playlist_content,
     build_stream_url,
     compute_session_signature,
@@ -43,7 +43,6 @@ from home_stream.helpers import (
     get_version_info,
     list_folder_entries_with_stream_urls,
     load_config,
-    sanitize_filename,
     truncate_secret,
     validate_user,
 )
@@ -266,10 +265,7 @@ def init_routes(app: Flask, limiter: Limiter) -> None:  # noqa: C901, PLR0915
 
         # If the path is a file, send it (download)
         if Path(real_path).is_file():
-            return send_file(
-                real_path,
-                download_name=sanitize_filename(Path(real_path).name),
-            )
+            return build_file_download_response(real_path)
 
         # If the path is a folder, create a M3U8 playlist containing all stream URLs of the
         # contained files

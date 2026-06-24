@@ -25,6 +25,18 @@ users:
 secret_key: "CHANGE_ME_IN_FAVOUR_OF_A_LONG_PASSWORD"
 # Protocol used to serve the files. Can be either http or https
 protocol: https
+# Optional: How file downloads/streams are delivered to the client. Default: direct
+# - direct:    Flask serves the bytes itself (send_file). Zero-config, but ties up a worker
+#              for the whole transfer and can time out on large files. Fine for small setups.
+# - xaccel:    Flask only authorizes the request and hands the file to nginx via
+#              X-Accel-Redirect. nginx serves the bytes (kernel sendfile, range/resume).
+#              Recommended for production. Requires an `internal` nginx location (see README).
+# - xsendfile: Same idea for Apache (mod_xsendfile) / Lighttpd via the X-Sendfile header.
+#              Requires XSendFilePath whitelisting the media_root (see README).
+# download_method: direct
+# Optional: internal URI namespace used for X-Accel-Redirect (xaccel only).
+# Must match the `internal` location block in your nginx config. Default: /_protected
+# download_internal_prefix: /_protected
 # Optional: Modified rate limits following https://flask-limiter.readthedocs.io/en/stable/configuration.html#rate-limit-string-notation
 # rate_limit_default: 25 per 5 minutes
 # rate_limit_login: 2 per 10 seconds

@@ -12,6 +12,7 @@ from flask import Flask, current_app, request
 
 from home_stream.helpers import (
     REQUIRED_CONFIG_KEYS,
+    build_file_download_response,
     compute_session_signature,
     deslugify,
     file_type,
@@ -151,6 +152,132 @@ def test_load_config_successfully_sets_flask_config(app) -> None:
         assert current_app.secret_key == current_app.config["SECRET_KEY"]
         assert current_app.config["STREAM_SECRET"] == current_app.secret_key
         assert current_app.config["MEDIA_EXTENSIONS"] == ["mp4", "mp3"]
+
+
+def _base_config() -> dict:
+    """Return a minimal valid config dict for load_config tests."""
+    return {
+        "users": {"testuser": "fake"},
+        "video_extensions": ["mp4"],
+        "audio_extensions": ["mp3"],
+        "media_root": "/tmp",
+        "secret_key": "supersecret",
+        "protocol": "http",
+    }
+
+
+def test_load_config_download_method_defaults() -> None:
+    """download_method defaults to 'direct' and prefix to '/_protected'."""
+    path = create_temp_config(_base_config())
+    try:
+        app = Flask("test")
+        load_config(app, path)
+        assert app.config["DOWNLOAD_METHOD"] == "direct"
+        assert app.config["DOWNLOAD_INTERNAL_PREFIX"] == "/_protected"
+    finally:
+        os.remove(path)
+
+
+@pytest.mark.parametrize("method", ["direct", "xaccel", "xsendfile", "XAccel"])
+def test_load_config_download_method_valid(method) -> None:
+    """Valid download_method values are accepted and normalized to lowercase."""
+    config = _base_config()
+    config["download_method"] = method
+    path = create_temp_config(config)
+    try:
+        app = Flask("test")
+        load_config(app, path)
+        assert app.config["DOWNLOAD_METHOD"] == method.lower()
+    finally:
+        os.remove(path)
+
+
+def test_load_config_download_method_invalid() -> None:
+    """An invalid download_method raises a helpful ValueError."""
+    config = _base_config()
+    config["download_method"] = "ftp"
+    path = create_temp_config(config)
+    try:
+        app = Flask("test")
+        with pytest.raises(ValueError, match="Invalid download_method"):
+            load_config(app, path)
+    finally:
+        os.remove(path)
+
+
+def test_load_config_download_internal_prefix_trailing_slash() -> None:
+    """A trailing slash on download_internal_prefix is stripped."""
+    config = _base_config()
+    config["download_internal_prefix"] = "/secure/"
+    path = create_temp_config(config)
+    try:
+        app = Flask("test")
+        load_config(app, path)
+        assert app.config["DOWNLOAD_INTERNAL_PREFIX"] == "/secure"
+    finally:
+        os.remove(path)
+
+
+def test_build_file_download_response_direct(app, media_file) -> None:
+    """Direct mode streams the file content via send_file."""
+    with app.test_request_context():
+        app.config["DOWNLOAD_METHOD"] = "direct"
+        response = build_file_download_response(media_file)
+        response.direct_passthrough = False
+        assert response.status_code == 200
+        assert response.get_data().startswith(b"ID3")
+
+
+def test_build_file_download_response_xaccel_nonascii(app, media_file_nonascii) -> None:
+    """Xaccel mode URL-encodes non-ASCII paths and sets a UTF-8 Content-Disposition."""
+    with app.test_request_context():
+        app.config["DOWNLOAD_METHOD"] = "xaccel"
+        app.config["DOWNLOAD_INTERNAL_PREFIX"] = "/_protected"
+        # The route hands the helper a symlink-resolved path; mirror that here.
+        response = build_file_download_response(os.path.realpath(media_file_nonascii))
+        assert response.status_code == 200
+        assert response.get_data() == b""
+        redirect = response.headers["X-Accel-Redirect"]
+        assert redirect.startswith("/_protected/Filme/")
+        # en-dash (U+2013) must not appear raw in the header
+        assert "\u2013" not in redirect
+        disposition = response.headers["Content-Disposition"]
+        assert "filename*=UTF-8''" in disposition
+
+
+def test_build_file_download_response_xsendfile(app, media_file) -> None:
+    """Xsendfile mode emits the absolute filesystem path."""
+    with app.test_request_context():
+        app.config["DOWNLOAD_METHOD"] = "xsendfile"
+        response = build_file_download_response(media_file)
+        assert response.status_code == 200
+        assert response.get_data() == b""
+        assert response.headers["X-Sendfile"] == media_file
+
+
+def test_build_file_download_response_xaccel_symlinked_root(app, tmp_path) -> None:
+    """Xaccel relpath stays clean when media_root is reached via a symlink.
+
+    The route hands this helper a symlink-resolved real_path. If the relative path were
+    computed against the raw (symlinked) media_root, it would produce a broken '../..' URI.
+    """
+    real_dir = tmp_path / "real_media"
+    (real_dir / "Filme").mkdir(parents=True)
+    media_file = real_dir / "Filme" / "movie.mp4"
+    media_file.write_bytes(b"ID3")
+
+    link_dir = tmp_path / "link_media"
+    link_dir.symlink_to(real_dir)
+
+    with app.test_request_context():
+        app.config["DOWNLOAD_METHOD"] = "xaccel"
+        app.config["DOWNLOAD_INTERNAL_PREFIX"] = "/_protected"
+        app.config["MEDIA_ROOT"] = str(link_dir)  # configured as the symlink
+        # real_path is resolved, as the route would pass it
+        real_path = os.path.realpath(str(media_file))
+        response = build_file_download_response(real_path)
+
+        assert response.headers["X-Accel-Redirect"] == "/_protected/Filme/movie.mp4"
 
 
 def test_verify_password_success(app, client) -> None:

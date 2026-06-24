@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import mimetypes
 import os
 import re
 import subprocess
@@ -15,7 +16,7 @@ from urllib.parse import quote
 
 import yaml
 from bcrypt import checkpw
-from flask import Flask, abort, current_app, request
+from flask import Flask, Response, abort, current_app, request, send_file
 
 from . import __version__
 
@@ -27,6 +28,8 @@ REQUIRED_CONFIG_KEYS = (
     "secret_key",
     "protocol",
 )
+
+VALID_DOWNLOAD_METHODS = frozenset({"direct", "xaccel", "xsendfile"})
 
 
 def load_config(app: Flask, filename: str) -> None:
@@ -61,6 +64,23 @@ def load_config(app: Flask, filename: str) -> None:
     app.config["RATE_LIMIT_STORAGE_URI"] = app.config.get("RATE_LIMIT_STORAGE_URI", "memory://")
     app.config["RATE_LIMIT_DEFAULT"] = app.config.get("RATE_LIMIT_DEFAULT", "25 per 5 minutes")
     app.config["RATE_LIMIT_LOGIN"] = app.config.get("RATE_LIMIT_LOGIN", "2 per 10 seconds")
+
+    # Download method: how file bytes are pushed to the client.
+    # - "direct": Flask serves the file itself (send_file). Zero-config default.
+    # - "xaccel": emit X-Accel-Redirect so nginx serves the file (kernel sendfile).
+    # - "xsendfile": emit X-Sendfile so Apache/Lighttpd serves the file.
+    download_method = str(app.config.get("DOWNLOAD_METHOD", "direct")).lower()
+    if download_method not in VALID_DOWNLOAD_METHODS:
+        msg = (
+            f"Invalid download_method '{download_method}'. "
+            f"Must be one of: {', '.join(sorted(VALID_DOWNLOAD_METHODS))}."
+        )
+        raise ValueError(msg)
+    app.config["DOWNLOAD_METHOD"] = download_method
+    # Internal URI namespace used for X-Accel-Redirect (must match the nginx `internal` location).
+    app.config["DOWNLOAD_INTERNAL_PREFIX"] = str(
+        app.config.get("DOWNLOAD_INTERNAL_PREFIX", "/_protected")
+    ).rstrip("/")
 
     # Print the loaded config in DEBUG mode
     app.logger.debug(app.config)
@@ -376,3 +396,48 @@ def build_playlist_content(playlist_name: str, files: list[dict[str, str]]) -> s
         )
         playlist_lines.append(file.get("stream_url", ""))
     return "\n".join(playlist_lines)
+
+
+def build_file_download_response(real_path: str) -> Response:
+    """Build a download response for a single file according to DOWNLOAD_METHOD.
+
+    - "direct": Flask streams the file itself via send_file (default).
+    - "xaccel": empty response with X-Accel-Redirect so nginx serves the file.
+    - "xsendfile": empty response with X-Sendfile so Apache/Lighttpd serves the file.
+
+    Auth/path resolution must already have happened before calling this.
+    """
+    method = current_app.config.get("DOWNLOAD_METHOD", "direct")
+    download_name = sanitize_filename(os.path.basename(real_path))
+
+    if method == "direct":
+        return send_file(real_path, download_name=download_name)
+
+    # Offload modes: Flask emits a pointer header and the webserver serves the bytes.
+    content_type = mimetypes.guess_type(download_name)[0] or "application/octet-stream"
+    headers = {
+        "Content-Type": content_type,
+        "Content-Disposition": _content_disposition(download_name),
+    }
+
+    if method == "xaccel":
+        # nginx internal redirect. Value is an internal URI, not a filesystem path.
+        prefix = current_app.config["DOWNLOAD_INTERNAL_PREFIX"]
+        # real_path is symlink-resolved (via secure_path/realpath), so compute the relative
+        # path against the resolved media root too — otherwise a symlinked media_root would
+        # produce a broken "../../.." URI instead of a clean relative path.
+        media_root = os.path.realpath(current_app.config["MEDIA_ROOT"])
+        rel_path = os.path.relpath(real_path, media_root)
+        # Encode each path segment; keep "/" as separators.
+        headers["X-Accel-Redirect"] = f"{prefix}/{quote(rel_path)}"
+    else:  # xsendfile
+        # Apache/Lighttpd. Value is the absolute filesystem path.
+        headers["X-Sendfile"] = real_path
+
+    return Response(b"", headers=headers)
+
+
+def _content_disposition(filename: str) -> str:
+    """Build a Content-Disposition header safe for non-ASCII filenames (RFC 5987/6266)."""
+    ascii_fallback = filename.encode("ascii", "replace").decode("ascii").replace('"', "")
+    return f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{quote(filename)}"

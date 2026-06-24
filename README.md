@@ -86,6 +86,51 @@ For productive use, you should use a proper webserver. Streaming many and large 
 
 For a quick start, run `uv run uwsgi --ini uwsgi.ini`. Using the docker image [`ghcr.io/mxmehl/home-stream`](https://github.com/mxmehl/home-stream/pkgs/container/home-stream) you would have everything contained into one container, ready to be use locally or behind a reverse proxy. Note that depending on your use-cases, you may want to reconfigure some uwsgi settings. This currently would need to be done manually.
 
+### Large file downloads (offloading)
+
+By default (`download_method: direct`), the application serves file bytes itself through the Python/uWSGI worker. This works, but for large files (movies) it ties up a worker for the whole transfer, interacts poorly with proxy buffering, and can hit timeouts (e.g. uWSGI's `harakiri`). This is the classic reason large downloads drop while a plain nginx/sftp serve never does.
+
+The robust solution is to keep **authentication and discovery in the app**, but let your **webserver push the bytes** using a zero-copy `sendfile()` path. The app authorizes the request exactly as before (your permanent per-user tokens are unchanged), then hands the file to the webserver via a response header. Choose the mechanism that matches your front-end webserver via `download_method` in `config.yaml`:
+
+#### nginx (`download_method: xaccel`) — recommended
+
+The app emits an `X-Accel-Redirect` header pointing into an internal location that nginx maps to your media root:
+
+```nginx
+location / {
+    proxy_pass http://home-stream:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# Must match download_internal_prefix (default /_protected).
+# `internal` makes it unreachable directly — only X-Accel-Redirect can reach it.
+location /_protected/ {
+    internal;
+    alias /media/data/;   # same path as media_root, read-only is fine
+}
+```
+
+#### Apache / Lighttpd (`download_method: xsendfile`)
+
+Requires [`mod_xsendfile`](https://github.com/nmaier/mod_xsendfile). The app emits an `X-Sendfile` header with the absolute file path, which Apache serves directly:
+
+```apache
+XSendFile On
+# Scope strictly to the media root so only intended files can be served.
+XSendFilePath /media/data
+```
+
+#### Notes
+
+- **The offloading webserver must see the same media files** at the configured path. In Docker, mount the same volume (e.g. the read-only NFS mount) into the proxy container. Read-only access is sufficient.
+- **Symlinks are resolved.** The app hands the webserver the symlink-resolved (real) path. If `media_root` is itself a symlink (or sits under one), point nginx's `alias` and Apache's `XSendFilePath` at the **real** target directory, not the symlink.
+- **Security:** keep the nginx location `internal`, and scope `XSendFilePath` to exactly the media root. Authorization stays entirely in the app — the webserver only serves paths the app explicitly hands it.
+- Folder downloads (generated M3U8 playlists) are always served directly by the app, since they are tiny.
+- With offloading enabled, uWSGI's `harakiri`/keepalive settings no longer affect downloads.
+
+
 ### Usage Scenarios
 
 The application is mainly designed with the use-case of running it on a NAS or home server with direct media access to allow accessing your media files remotely.
