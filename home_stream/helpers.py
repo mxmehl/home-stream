@@ -13,6 +13,7 @@ import os
 import re
 import subprocess
 from urllib.parse import quote
+from xml.etree import ElementTree as ET
 
 import yaml
 from bcrypt import checkpw
@@ -30,6 +31,11 @@ REQUIRED_CONFIG_KEYS = (
 )
 
 VALID_DOWNLOAD_METHODS = frozenset({"direct", "xaccel", "xsendfile"})
+
+# Cap .nfo size before parsing as a cheap DoS guard (these files are tiny in practice).
+NFO_MAX_BYTES = 1024 * 1024
+# Fields extracted from .nfo files, in display order.
+NFO_FIELDS = ("title", "year", "rating", "plot")
 
 
 def load_config(app: Flask, filename: str) -> None:
@@ -81,6 +87,9 @@ def load_config(app: Flask, filename: str) -> None:
     app.config["DOWNLOAD_INTERNAL_PREFIX"] = str(
         app.config.get("DOWNLOAD_INTERNAL_PREFIX", "/_protected")
     ).rstrip("/")
+
+    # Show metadata from Kodi-style .nfo sidecar files in the browse view (default on).
+    app.config["SHOW_NFO_METADATA"] = bool(app.config.get("SHOW_NFO_METADATA", True))
 
     # Print the loaded config in DEBUG mode
     app.logger.debug(app.config)
@@ -254,7 +263,7 @@ def extract_path_components(subpath: str) -> tuple[list[str], str, dict]:
 
 def list_folder_entries_with_stream_urls(
     real_path: str, slug_parts: list[str], username: str
-) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+) -> tuple[list[dict[str, str]], list[dict[str, object]]]:
     """List directories and media files in a folder with slugified paths.
 
     This function scans the given directory, filters out hidden folders,
@@ -273,7 +282,7 @@ def list_folder_entries_with_stream_urls(
             - list of dicts (name (file), slug_path, stream_url)
     """
     folders: list[dict[str, str]] = []
-    files: list[dict[str, str]] = []
+    files: list[dict[str, object]] = []
 
     # Loop through all entries in the directory
     for dir_element in os.listdir(real_path):
@@ -291,17 +300,22 @@ def list_folder_entries_with_stream_urls(
             if ext in current_app.config["MEDIA_EXTENSIONS"]:
                 file_slug_path = "/".join([*slug_parts, entry_slug])
                 stream_url = build_stream_url(username, get_stream_token(username), file_slug_path)
-                files.append(
-                    {
-                        "name": sanitize_filename(dir_element),
-                        "slug_path": file_slug_path,
-                        "stream_url": stream_url,
-                    }
-                )
+                entry: dict[str, object] = {
+                    "name": sanitize_filename(dir_element),
+                    "slug_path": file_slug_path,
+                    "stream_url": stream_url,
+                }
+                # one .nfo open per media file per view; ceiling is O(files) filesystem stats on a
+                # folder render. Upgrade path: cache by path+mtime.
+                if current_app.config.get("SHOW_NFO_METADATA"):
+                    metadata = read_nfo_metadata(full)
+                    if metadata:
+                        entry["metadata"] = metadata
+                files.append(entry)
 
     # Sort entries alphabetically by name (case-insensitive)
     folders.sort(key=lambda x: x["name"].lower())
-    files.sort(key=lambda x: x["name"].lower())
+    files.sort(key=lambda x: str(x["name"]).lower())
 
     return folders, files
 
@@ -385,7 +399,7 @@ def build_stream_url(username: str, token: str, rel_path: str) -> str:
     return f"{protocol}://{host}/dl-token/{quote(username)}/{token}/{quote(rel_path)}"
 
 
-def build_playlist_content(playlist_name: str, files: list[dict[str, str]]) -> str:
+def build_playlist_content(playlist_name: str, files: list[dict[str, object]]) -> str:
     """Build a playlist content string for M3U8 format."""
     playlist_lines = ["#EXTM3U"]
     playlist_lines.append(f"#PLAYLIST: {playlist_name}")
@@ -394,7 +408,7 @@ def build_playlist_content(playlist_name: str, files: list[dict[str, str]]) -> s
             # TODO: Add duration of file
             f"#EXTINF:-1,{file.get('name', '')}"  # NOTE: -1 means unknown duration
         )
-        playlist_lines.append(file.get("stream_url", ""))
+        playlist_lines.append(str(file.get("stream_url", "")))
     return "\n".join(playlist_lines)
 
 
@@ -441,3 +455,97 @@ def _content_disposition(filename: str) -> str:
     """Build a Content-Disposition header safe for non-ASCII filenames (RFC 5987/6266)."""
     ascii_fallback = filename.encode("ascii", "replace").decode("ascii").replace('"', "")
     return f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{quote(filename)}"
+
+
+def _parse_nfo(nfo_path: str) -> dict[str, str]:
+    """Safely parse a Kodi .nfo file and return selected fields as a dict.
+
+    Returns an empty dict on any problem (missing file, too large, malformed XML, or a hostile
+    document) so callers never have to handle errors.
+
+    stdlib xml.etree is used without a hardened parser. The ceiling is XML-bomb/XXE resistance: we
+    mitigate by capping size and refusing any document that declares a DOCTYPE/ENTITY (legitimate
+    tinyMediaManager .nfo files never do). Upgrade path: swap in a maintained hardened parser if
+    untrusted .nfo ever enter scope.
+    """
+    try:
+        if os.path.getsize(nfo_path) > NFO_MAX_BYTES:
+            return {}
+        with open(nfo_path, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except OSError:
+        return {}
+
+    # Reject entity/DOCTYPE declarations outright (billion-laughs / XXE vectors).
+    lowered = text.lower()
+    if "<!doctype" in lowered or "<!entity" in lowered:
+        return {}
+
+    try:
+        root = ET.fromstring(text)  # noqa: S314 (guarded above; stdlib parser)
+    except ET.ParseError:
+        return {}
+
+    metadata: dict[str, str] = {}
+    for field in NFO_FIELDS:
+        element = root.find(field)
+        value = (element.text or "").strip() if element is not None else ""
+        # Drop empty values and placeholder zero ratings/years.
+        if not value or (field in ("rating", "year") and value in ("0", "0.0")):
+            continue
+        metadata[field] = value
+
+    # Movies use a nested <ratings><rating><value>..</value></rating></ratings> block instead
+    # of the flat <rating> tag. Fall back to it, preferring the default="true" rating.
+    if "rating" not in metadata:
+        rating = _extract_nested_rating(root)
+        if rating:
+            metadata["rating"] = rating
+
+    marker = _extract_episode_marker(root)
+    if marker:
+        metadata["episode_marker"] = marker
+
+    return metadata
+
+
+def _extract_episode_marker(root: ET.Element) -> str:
+    """Return an SxxExx marker from <season>/<episode>, or '' if not a valid episode.
+
+    Season 0 is valid (Kodi uses it for specials), so only non-negative ints qualify;
+    the -1 placeholders Kodi writes elsewhere are ignored.
+    """
+    season = (root.findtext("season") or "").strip()
+    episode = (root.findtext("episode") or "").strip()
+    if season.lstrip("-").isdigit() and episode.lstrip("-").isdigit():
+        s, e = int(season), int(episode)
+        if s >= 0 and e >= 0:
+            return f"S{s:02d}E{e:02d}"
+    return ""
+
+
+def _extract_nested_rating(root: ET.Element) -> str:
+    """Return the rating value from a <ratings> block, preferring default="true".
+
+    Returns an empty string if no usable (non-zero) rating is found.
+    """
+    ratings = root.findall("ratings/rating")
+    # Prefer the rating marked as default, otherwise take the first.
+    chosen = next((r for r in ratings if r.get("default") == "true"), None)
+    if chosen is None and ratings:
+        chosen = ratings[0]
+    if chosen is None:
+        return ""
+    value = (chosen.findtext("value") or "").strip()
+    return "" if value in ("", "0", "0.0") else value
+
+
+def read_nfo_metadata(media_real_path: str) -> dict[str, str]:
+    """Read metadata from a media file's sibling .nfo (same name, .nfo extension)."""
+    nfo_path = os.path.splitext(media_real_path)[0] + ".nfo"
+    return _parse_nfo(nfo_path)
+
+
+def read_tvshow_metadata(folder_real_path: str) -> dict[str, str]:
+    """Read metadata from a folder's tvshow.nfo, if present."""
+    return _parse_nfo(os.path.join(folder_real_path, "tvshow.nfo"))

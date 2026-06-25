@@ -1,6 +1,21 @@
 {%- extends "base.html" %}
 
 {%- block content %}
+{%- if show_metadata %}
+{%- set show_line %}
+  {%- if show_metadata.title %}<strong>{{ show_metadata.title }}</strong>{% endif %}
+  {%- if show_metadata.year %} ({{ show_metadata.year }}){% endif %}
+  {%- if show_metadata.rating %} ★{{ show_metadata.rating }}{% endif %}
+{%- endset %}
+{%- if show_metadata.plot %}
+<details class="show-meta">
+  <summary>{{ show_line }}</summary>
+  <p class="file-plot">{{ show_metadata.plot }}</p>
+</details>
+{%- else %}
+<p class="show-meta">{{ show_line }}</p>
+{%- endif %}
+{%- endif %}
 {%- if folders %}
 <h2>Folders</h2>
 <ul>
@@ -14,12 +29,35 @@
 <ul class="files">
   {%- for file in files %}
   <li>
+    {%- if file.metadata and file.metadata.title %}
+    <span class="file-title">{{ file.metadata.title }}</span> —
+    <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
+    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
+    <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
+      🔗 Copy URL
+    </button>
+    {%- set meta_line %}
+      {%- if file.metadata.episode_marker %}{{ file.metadata.episode_marker }} - {% endif %}
+      {%- if file.metadata.year %}{{ file.metadata.year }} - {% endif %}
+      {%- if file.metadata.rating %}★{{ file.metadata.rating }} - {% endif %}
+      {{- file.name }}
+    {%- endset %}
+    {%- if file.metadata.plot %}
+    <details class="file-details">
+      <summary class="file-name">{{ meta_line }}</summary>
+      <p class="file-plot">{{ file.metadata.plot }}</p>
+    </details>
+    {%- else %}
+    <span class="file-name">{{ meta_line }}</span>
+    {%- endif %}
+    {%- else %}
     {{ file.name }} —
     <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
-    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play in browser</button></a>
+    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
     <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
-      ▶️ Copy Stream URL
+      🔗 Copy URL
     </button>
+    {%- endif %}
   </li>
   {%- endfor %}
 </ul>

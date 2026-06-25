@@ -21,6 +21,58 @@ ul.files li {
   padding: 0.2rem 0;
 }
 
+/* Title from .nfo shown as the primary line, alongside the action buttons */
+.file-title {
+  cursor: default;
+}
+
+/* Metadata + filename shown as a muted reference line below the buttons */
+.file-name {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--pico-muted-color);
+}
+
+/* Collapsible plot: the muted metadata line doubles as the <summary>.
+   We reuse Pico's built-in <details> chevron (which already rotates when open)
+   and only retarget Pico's accordion colour variables to the muted colour,
+   rather than overriding its rules by specificity. */
+.file-details {
+  margin: 0;
+  --pico-accordion-close-summary-color: var(--pico-muted-color);
+  --pico-accordion-open-summary-color: var(--pico-muted-color);
+  --pico-accordion-active-summary-color: var(--pico-muted-color);
+}
+
+.file-details > summary {
+  display: inline-block;     /* shrink to content so the chevron sits by the text */
+  font-size: 0.85rem;
+}
+
+/* The expanded plot (reusable area for more metadata later) */
+.file-plot {
+  margin: 0.3rem 0 0.2rem;
+  font-size: 0.9rem;
+  max-width: 60ch;
+  white-space: pre-line;     /* preserve paragraph breaks from .nfo plots */
+}
+
+/* Folder-level show metadata header (from tvshow.nfo) */
+.show-meta {
+  color: var(--pico-muted-color);
+  cursor: default;
+}
+
+details.show-meta {
+  --pico-accordion-close-summary-color: var(--pico-muted-color);
+  --pico-accordion-open-summary-color: var(--pico-muted-color);
+  --pico-accordion-active-summary-color: var(--pico-muted-color);
+}
+
+details.show-meta > summary {
+  display: inline-block;
+}
+
 audio,
 video {
   width: 800px;

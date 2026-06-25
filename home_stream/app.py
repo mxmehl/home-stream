@@ -43,6 +43,7 @@ from home_stream.helpers import (
     get_version_info,
     list_folder_entries_with_stream_urls,
     load_config,
+    read_tvshow_metadata,
     truncate_secret,
     validate_user,
 )
@@ -191,6 +192,11 @@ def init_routes(app: Flask, limiter: Limiter) -> None:  # noqa: C901, PLR0915
             rel_path=subpath,
         )
 
+        # Folder-level metadata from a tvshow.nfo, if present and enabled
+        show_metadata = (
+            read_tvshow_metadata(real_path) if app.config.get("SHOW_NFO_METADATA") else {}
+        )
+
         return render_template(
             "browse.html",
             slugified_path=path_context["slugified_path"],
@@ -199,6 +205,7 @@ def init_routes(app: Flask, limiter: Limiter) -> None:  # noqa: C901, PLR0915
             folders=folders,
             files=files,
             playlist_stream_url=playlist_stream_url,
+            show_metadata=show_metadata,
         )
 
     @app.route("/play/<path:subpath>")  # noqa: RET503
@@ -233,7 +240,9 @@ def init_routes(app: Flask, limiter: Limiter) -> None:  # noqa: C901, PLR0915
                 username=username,
             )
             mediatype = (
-                "audio" if all(file_type(f.get("name", "")) == "audio" for f in files) else "video"
+                "audio"
+                if all(file_type(str(f.get("name", ""))) == "audio" for f in files)
+                else "video"
             )
 
             return render_template(
