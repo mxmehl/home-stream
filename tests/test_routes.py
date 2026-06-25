@@ -241,3 +241,72 @@ def test_dl_token_nonascii_playlist(client, app, media_file_nonascii, stream_tok
     assert response.status_code == 200
     assert response.mimetype == "audio/mpegurl"
     assert b"#EXTM3U" in response.data
+
+
+# --- Download offloading (X-Accel-Redirect / X-Sendfile) route tests ---
+
+
+def test_dl_token_xaccel_file(client, app, media_file_slugs, stream_token) -> None:
+    """Xaccel mode emits X-Accel-Redirect with an empty body and keeps auth."""
+    app.config["DOWNLOAD_METHOD"] = "xaccel"
+    app.config["DOWNLOAD_INTERNAL_PREFIX"] = "/_protected"
+
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    _, slugified_filename = media_file_slugs
+    response = client.get(f"/dl-token/testuser/{stream_token}/{slugified_filename}")
+
+    assert response.status_code == 200
+    assert response.data == b""  # webserver serves the bytes, not Flask
+    redirect = response.headers["X-Accel-Redirect"]
+    assert redirect.startswith("/_protected/")
+    # Spaces must be URL-encoded for the internal URI
+    assert " " not in redirect
+    assert "with%20spaces" in redirect
+    assert "attachment" in response.headers["Content-Disposition"]
+
+
+def test_dl_token_xaccel_invalid_token(client, app, media_file_slugs) -> None:
+    """Auth still enforced in xaccel mode: bad token returns 403, no header."""
+    app.config["DOWNLOAD_METHOD"] = "xaccel"
+
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    _, slugified_filename = media_file_slugs
+    response = client.get(f"/dl-token/testuser/badtoken/{slugified_filename}")
+
+    assert response.status_code == 403
+    assert "X-Accel-Redirect" not in response.headers
+
+
+def test_dl_token_xsendfile_file(client, app, media_file, media_file_slugs, stream_token) -> None:
+    """Xsendfile mode emits X-Sendfile with the absolute path and empty body."""
+    app.config["DOWNLOAD_METHOD"] = "xsendfile"
+
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    _, slugified_filename = media_file_slugs
+    response = client.get(f"/dl-token/testuser/{stream_token}/{slugified_filename}")
+
+    assert response.status_code == 200
+    assert response.data == b""
+    # The route resolves symlinks (e.g. /var -> /private/var on macOS), so compare realpaths.
+    assert response.headers["X-Sendfile"] == os.path.realpath(media_file)
+
+
+def test_dl_token_offload_playlist_direct(client, app, stream_token, media_file_slugs) -> None:
+    """Folder playlists are always served directly, even with offloading enabled."""
+    app.config["DOWNLOAD_METHOD"] = "xaccel"
+
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get(f"/dl-token/testuser/{stream_token}/test/with_spaces")
+
+    assert response.status_code == 200
+    assert response.mimetype == "audio/mpegurl"
+    assert b"#EXTM3U" in response.data
+    assert "X-Accel-Redirect" not in response.headers
