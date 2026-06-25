@@ -33,34 +33,20 @@ ul.files li {
   color: var(--pico-muted-color);
 }
 
-/* Collapsible plot: the muted metadata line doubles as the <summary>,
-   so nothing is added above it and the row keeps its height when collapsed. */
+/* Collapsible plot: the muted metadata line doubles as the <summary>.
+   We reuse Pico's built-in <details> chevron (which already rotates when open)
+   and only retarget Pico's accordion colour variables to the muted colour,
+   rather than overriding its rules by specificity. */
 .file-details {
   margin: 0;
+  --pico-accordion-close-summary-color: var(--pico-muted-color);
+  --pico-accordion-open-summary-color: var(--pico-muted-color);
+  --pico-accordion-active-summary-color: var(--pico-muted-color);
 }
 
 .file-details > summary {
+  display: inline-block;     /* shrink to content so the chevron sits by the text */
   font-size: 0.85rem;
-  color: var(--pico-muted-color);
-  cursor: pointer;
-  list-style: none;          /* hide the default disclosure triangle */
-  display: inline-block;     /* keep the line compact, not full-width */
-}
-
-.file-details > summary::-webkit-details-marker {
-  display: none;             /* hide default marker in WebKit/Blink */
-}
-
-/* Subtle caret affordance that rotates when expanded */
-.file-details > summary::after {
-  content: " \25b8";          /* ▸ */
-  display: inline-block;
-  transition: transform 0.15s ease;
-  color: var(--pico-muted-color);
-}
-
-.file-details[open] > summary::after {
-  transform: rotate(90deg);
 }
 
 /* The expanded plot (reusable area for more metadata later) */
@@ -77,24 +63,14 @@ ul.files li {
   cursor: default;
 }
 
+details.show-meta {
+  --pico-accordion-close-summary-color: var(--pico-muted-color);
+  --pico-accordion-open-summary-color: var(--pico-muted-color);
+  --pico-accordion-active-summary-color: var(--pico-muted-color);
+}
+
 details.show-meta > summary {
-  cursor: pointer;
-  list-style: none;
   display: inline-block;
-}
-
-details.show-meta > summary::-webkit-details-marker {
-  display: none;
-}
-
-details.show-meta > summary::after {
-  content: " \25b8";
-  display: inline-block;
-  transition: transform 0.15s ease;
-}
-
-details.show-meta[open] > summary::after {
-  transform: rotate(90deg);
 }
 
 audio,
