@@ -90,7 +90,7 @@ Log in via browser, by default on [localhost:8000](http://localhost:8000). Brows
 
 ### Production Webserver
 
-For productive use, you should use a proper webserver. Streaming many and large chunks of files may trigger issues with apps like gunicorn, so uWSGI is officially supported.
+For productive use, you should use a proper WSGI server. uWSGI is officially supported and ships in the Docker image. With the default `download_method: direct`, large file transfers run through the WSGI worker, which can strain servers like gunicorn (worker blocking, timeouts) — uWSGI tolerates this better. If you enable download offloading (see below), large files are served by your webserver instead, so the WSGI server only handles short requests and this distinction no longer matters.
 
 For a quick start, run `uv run uwsgi --ini uwsgi.ini`. Using the docker image [`ghcr.io/mxmehl/home-stream`](https://github.com/mxmehl/home-stream/pkgs/container/home-stream) you would have everything contained into one container, ready to be use locally or behind a reverse proxy. Note that depending on your use-cases, you may want to reconfigure some uwsgi settings. This currently would need to be done manually.
 
