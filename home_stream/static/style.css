@@ -33,10 +33,68 @@ ul.files li {
   color: var(--pico-muted-color);
 }
 
+/* Collapsible plot: the muted metadata line doubles as the <summary>,
+   so nothing is added above it and the row keeps its height when collapsed. */
+.file-details {
+  margin: 0;
+}
+
+.file-details > summary {
+  font-size: 0.85rem;
+  color: var(--pico-muted-color);
+  cursor: pointer;
+  list-style: none;          /* hide the default disclosure triangle */
+  display: inline-block;     /* keep the line compact, not full-width */
+}
+
+.file-details > summary::-webkit-details-marker {
+  display: none;             /* hide default marker in WebKit/Blink */
+}
+
+/* Subtle caret affordance that rotates when expanded */
+.file-details > summary::after {
+  content: " \25b8";          /* ▸ */
+  display: inline-block;
+  transition: transform 0.15s ease;
+  color: var(--pico-muted-color);
+}
+
+.file-details[open] > summary::after {
+  transform: rotate(90deg);
+}
+
+/* The expanded plot (reusable area for more metadata later) */
+.file-plot {
+  margin: 0.3rem 0 0.2rem;
+  font-size: 0.9rem;
+  max-width: 60ch;
+  white-space: pre-line;     /* preserve paragraph breaks from .nfo plots */
+}
+
 /* Folder-level show metadata header (from tvshow.nfo) */
 .show-meta {
   color: var(--pico-muted-color);
   cursor: default;
+}
+
+details.show-meta > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-block;
+}
+
+details.show-meta > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.show-meta > summary::after {
+  content: " \25b8";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+details.show-meta[open] > summary::after {
+  transform: rotate(90deg);
 }
 
 audio,

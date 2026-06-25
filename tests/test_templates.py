@@ -327,14 +327,19 @@ def test_browse_shows_nfo_title(client, app, media_file) -> None:
     title = soup.find("span", class_="file-title")
     assert title is not None
     assert title.get_text(strip=True) == "Real Episode Title"
-    # Plot is exposed as a hover tooltip on the title
-    assert title.get("title") == "Some plot."
-    # Secondary line: SxxExx - year - rating - filename, in that order
-    name_line = soup.find("span", class_="file-name")
-    assert name_line is not None
-    text = " ".join(name_line.get_text().split())
+    # Plot is shown in a collapsible <details>, with the metadata line as the summary
+    details = soup.find("details", class_="file-details")
+    assert details is not None
+    summary = details.find("summary", class_="file-name")
+    assert summary is not None
+    # Secondary (summary) line: SxxExx - year - rating - filename, in that order
+    text = " ".join(summary.get_text().split())
     assert text.startswith("S02E04 - 2018 - \u26057.5 - ")
     assert text.endswith(".mp3")
+    # Plot is real DOM text (not a tooltip), inside the details
+    plot = details.find("p", class_="file-plot")
+    assert plot is not None
+    assert plot.get_text(strip=True) == "Some plot."
 
 
 def test_browse_shows_tvshow_header(client, app, media_file) -> None:
