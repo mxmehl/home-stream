@@ -2,19 +2,42 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
+# Recommended setup: the app handles auth/discovery, and an nginx sidecar serves
+# the file bytes via X-Accel-Redirect (download_method: xaccel in config.yaml).
+# The sidecar shares the media volume, so it can read the files directly — unlike
+# a host/edge webserver, which often cannot (see README).
+#
+# For the simplest possible setup without offloading, drop the webserver
+# service, publish the app's port directly, and keep download_method: direct.
+
 services:
   home-stream:
     image: ghcr.io/mxmehl/home-stream:latest
     container_name: home-stream
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    # No host port needed; only the nginx sidecar talks to the app.
+    expose:
+      - "8000"
     volumes:
-      - /path/to/local/data:/media/data
+      - /path/to/local/data:/media/data:ro
       - ./config/config.yaml:/app/config.yaml
     mem_limit: 500m
     depends_on:
       - valkey
+
+  webserver:
+    image: nginx:stable
+    container_name: home-stream-nginx
+    restart: unless-stopped
+    ports:
+      # Expose HTTP to your TLS-terminating reverse proxy (adjust as needed).
+      - "127.0.0.1:8000:80"
+    volumes:
+      - ./nginx.sample.conf:/etc/nginx/conf.d/default.conf:ro
+      # Same media path as the app, read-only is enough.
+      - /path/to/local/data:/media/data:ro
+    depends_on:
+      - home-stream
 
   valkey:
     image: valkey/valkey:9

@@ -21,6 +21,14 @@ A web-based browser and streaming interface for local media files. Supports in-b
 - HTTP Basic Auth fallback for external players (VLC, mpv, etc.) using authenticated links
 - Lightweight and dependency-minimal Python Flask app
 
+### Use-Cases for home-stream
+
+The application is mainly designed with the use-case of running it on a NAS or home server with direct media access to allow accessing your media files remotely.
+
+For this, you may put this application behind a reverse proxy or make it accessible via a VPN connection.
+
+Of course, you can also use it purely locally, although there are probably better tools to administrate your media files.
+
 ## Installation
 
 Minimum Python version: 3.10
@@ -92,25 +100,21 @@ By default (`download_method: direct`), the application serves file bytes itself
 
 The robust solution is to keep **authentication and discovery in the app**, but let your **webserver push the bytes** using a zero-copy `sendfile()` path. The app authorizes the request exactly as before (your permanent per-user tokens are unchanged), then hands the file to the webserver via a response header. Choose the mechanism that matches your front-end webserver via `download_method` in `config.yaml`:
 
-#### nginx (`download_method: xaccel`) — recommended
+> **The one rule that matters:** whatever webserver serves the bytes must have **direct read access to the media files** at the same paths the app sees. This is the part that trips people up — see the note below.
 
-The app emits an `X-Accel-Redirect` header pointing into an internal location that nginx maps to your media root:
+#### Easiest robust option: an nginx sidecar container (recommended)
 
-```nginx
-location / {
-    proxy_pass http://home-stream:8000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
+You do **not** need to bundle nginx into the app image, and you do **not** need your existing internet-facing reverse proxy to touch the media. The simplest robust setup is a dedicated nginx container that sits next to the app in the same `docker-compose.yaml`, shares the media volume, and does the offload. Your outer proxy (Caddy, Traefik, an existing nginx, …) just forwards HTTP to this sidecar and handles TLS as before.
 
-# Must match download_internal_prefix (default /_protected).
-# `internal` makes it unreachable directly — only X-Accel-Redirect can reach it.
-location /_protected/ {
-    internal;
-    alias /media/data/;   # same path as media_root, read-only is fine
-}
-```
+Why a sidecar rather than your existing host/edge webserver? Because of the file-access rule above. The app container can already read the media (it runs as its own user). A *different* webserver — for example a host nginx running as `www-data`, or an edge proxy on another machine — usually **cannot** read your media (especially with read-only NFS mounts and restrictive ownership), so its offload attempts fail with 403/404 even though the app authorized them. A sidecar container avoids this entirely by mounting the same volume and running as the same user as the app.
+
+Ready-to-use samples are provided: [`docker-compose.sample.yaml`](./docker-compose.sample.yaml) (app + nginx sidecar + valkey) and [`nginx.sample.conf`](./nginx.sample.conf) (the matching nginx config). Set `download_method: xaccel` in `config.yaml`, adjust the media path and port, and point your TLS-terminating reverse proxy at the sidecar.
+
+The remaining subsections describe the underlying mechanisms if you prefer to use an existing nginx/Apache that *does* have media access instead of a sidecar.
+
+#### nginx (`download_method: xaccel`)
+
+The app emits an `X-Accel-Redirect` header pointing into an internal location that nginx maps to your media root. See [`nginx.sample.conf`](./nginx.sample.conf) for a ready-to-use example. The key points:
 
 #### Apache / Lighttpd (`download_method: xsendfile`)
 
@@ -124,20 +128,12 @@ XSendFilePath /media/data
 
 #### Notes
 
-- **The offloading webserver must see the same media files** at the configured path. In Docker, mount the same volume (e.g. the read-only NFS mount) into the proxy container. Read-only access is sufficient.
+- **The offloading webserver must see the same media files** at the configured path. With the sidecar above, this is handled by mounting the same volume into the nginx container. If you instead reuse an existing host/edge webserver, it must have read access to the media itself — a separate user like `www-data` often does **not**, especially with read-only NFS mounts and restrictive ownership, which is exactly why the sidecar is recommended. Read-only access is sufficient.
 - **Symlinks are resolved.** The app hands the webserver the symlink-resolved (real) path. If `media_root` is itself a symlink (or sits under one), point nginx's `alias` and Apache's `XSendFilePath` at the **real** target directory, not the symlink.
 - **Security:** keep the nginx location `internal`, and scope `XSendFilePath` to exactly the media root. Authorization stays entirely in the app — the webserver only serves paths the app explicitly hands it.
 - Folder downloads (generated M3U8 playlists) are always served directly by the app, since they are tiny.
 - With offloading enabled, uWSGI's `harakiri`/keepalive settings no longer affect downloads.
 
-
-### Usage Scenarios
-
-The application is mainly designed with the use-case of running it on a NAS or home server with direct media access to allow accessing your media files remotely.
-
-For this, you may put this application behind a reverse proxy or make it accessible via a VPN connection.
-
-Of course, you can also use it purely locally, although there are probably better tools to administrate your media files.
 
 ## License
 
