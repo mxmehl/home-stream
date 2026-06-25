@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/mxmehl/home-stream/compare/v1.6.0...v1.7.0) (2026-06-25)
+
+
+### 🚀 New Features
+
+* show Kodi .nfo metadata in browse view ([#184](https://github.com/mxmehl/home-stream/issues/184)) ([12bc728](https://github.com/mxmehl/home-stream/commit/12bc72831a084c553c6d76cf230a19886ea31b51))
+* show metadata for audio files using ID3 tags, similar to video (nfo files) ([#186](https://github.com/mxmehl/home-stream/issues/186)) ([096ca76](https://github.com/mxmehl/home-stream/commit/096ca76ab64f332e4c53aadb5784984974d66ed7))
+
 ## [1.6.0](https://github.com/mxmehl/home-stream/compare/v1.5.5...v1.6.0) (2026-06-25)
 
 
