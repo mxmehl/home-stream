@@ -21,12 +21,16 @@ ul.files li {
   padding: 0.2rem 0;
 }
 
-/* Secondary metadata line under a file row (from .nfo sidecars) */
-.file-meta {
+/* Title from .nfo shown as the primary line above the filename */
+.file-title {
   display: block;
+  cursor: default;
+}
+
+/* Filename demoted to a muted reference line when a title is shown */
+.file-name {
   font-size: 0.85rem;
   color: var(--pico-muted-color);
-  cursor: default;
 }
 
 /* Folder-level show metadata header (from tvshow.nfo) */

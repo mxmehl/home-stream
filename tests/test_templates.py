@@ -121,8 +121,8 @@ def test_browse_stream_url_copy_button(client, app, media_file_slugs, stream_tok
 
     response = client.get("/browse/test/with_spaces/")
     soup = BeautifulSoup(response.data, "html.parser")
-    buttons = soup.find_all("button", string=lambda text: text and "Copy Stream URL" in text)
-    assert buttons, "No Copy Stream URL button found"
+    buttons = soup.find_all("button", string=lambda text: text and "Copy URL" in text)
+    assert buttons, "No Copy URL button found"
 
     button = buttons[0]
     onclick = button.get("onclick")
@@ -308,7 +308,7 @@ def test_play_folder_with_multiple_files(client, app, media_file_slugs, stream_t
 
 
 def test_browse_shows_nfo_title(client, app, media_file) -> None:
-    """A sibling .nfo title is rendered as a secondary line in the browse view."""
+    """A sibling .nfo title is rendered as the primary line, filename demoted below."""
     nfo_path = media_file.rsplit(".", 1)[0] + ".nfo"
     with open(nfo_path, "w", encoding="utf-8") as f:
         f.write(
@@ -322,13 +322,15 @@ def test_browse_shows_nfo_title(client, app, media_file) -> None:
 
     response = client.get("/browse/test/with_spaces/")
     soup = BeautifulSoup(response.data, "html.parser")
-    meta = soup.find("span", class_="file-meta")
-    assert meta is not None
-    assert "Real Episode Title" in meta.get_text()
+    title = soup.find("span", class_="file-title")
+    assert title is not None
+    assert "Real Episode Title" in title.get_text()
     # Placeholder rating 0.0 must not render
-    assert "0.0" not in meta.get_text()
+    assert "0.0" not in title.get_text()
     # Plot is exposed as a hover tooltip
-    assert meta.get("title") == "Some plot."
+    assert title.get("title") == "Some plot."
+    # The filename is demoted to a muted reference line
+    assert soup.find("span", class_="file-name") is not None
 
 
 def test_browse_shows_tvshow_header(client, app, media_file) -> None:
@@ -361,7 +363,8 @@ def test_browse_no_nfo_no_meta(client, app, media_file) -> None:
 
     response = client.get("/browse/test/with_spaces/")
     soup = BeautifulSoup(response.data, "html.parser")
-    assert soup.find("span", class_="file-meta") is None
+    assert soup.find("span", class_="file-title") is None
+    assert soup.find("span", class_="file-name") is None
     assert soup.find("p", class_="show-meta") is None
 
 

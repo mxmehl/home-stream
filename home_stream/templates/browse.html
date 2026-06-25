@@ -21,19 +21,21 @@
 <ul class="files">
   {%- for file in files %}
   <li>
+    {%- if file.metadata and file.metadata.title %}
+    <span class="file-title"{% if file.metadata.plot %} title="{{ file.metadata.plot }}"{% endif %}>
+      {{ file.metadata.title }}
+      {%- if file.metadata.year %} ({{ file.metadata.year }}){% endif %}
+      {%- if file.metadata.rating %} ★{{ file.metadata.rating }}{% endif %}
+    </span>
+    <span class="file-name">{{ file.name }}</span> —
+    {%- else %}
     {{ file.name }} —
+    {%- endif %}
     <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
     <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
     <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
       🔗 Copy URL
     </button>
-    {%- if file.metadata %}
-    <span class="file-meta"{% if file.metadata.plot %} title="{{ file.metadata.plot }}"{% endif %}>
-      {%- if file.metadata.title %}{{ file.metadata.title }}{% endif %}
-      {%- if file.metadata.year %} ({{ file.metadata.year }}){% endif %}
-      {%- if file.metadata.rating %} ★{{ file.metadata.rating }}{% endif %}
-    </span>
-    {%- endif %}
   </li>
   {%- endfor %}
 </ul>
