@@ -1,6 +1,13 @@
 {%- extends "base.html" %}
 
 {%- block content %}
+{%- if show_metadata %}
+<p class="show-meta"{% if show_metadata.plot %} title="{{ show_metadata.plot }}"{% endif %}>
+  {%- if show_metadata.title %}<strong>{{ show_metadata.title }}</strong>{% endif %}
+  {%- if show_metadata.year %} ({{ show_metadata.year }}){% endif %}
+  {%- if show_metadata.rating %} ★{{ show_metadata.rating }}{% endif %}
+</p>
+{%- endif %}
 {%- if folders %}
 <h2>Folders</h2>
 <ul>
@@ -20,6 +27,13 @@
     <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
       ▶️ Copy Stream URL
     </button>
+    {%- if file.metadata %}
+    <span class="file-meta"{% if file.metadata.plot %} title="{{ file.metadata.plot }}"{% endif %}>
+      {%- if file.metadata.title %}{{ file.metadata.title }}{% endif %}
+      {%- if file.metadata.year %} ({{ file.metadata.year }}){% endif %}
+      {%- if file.metadata.rating %} ★{{ file.metadata.rating }}{% endif %}
+    </span>
+    {%- endif %}
   </li>
   {%- endfor %}
 </ul>

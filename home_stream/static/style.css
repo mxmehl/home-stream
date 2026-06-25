@@ -21,6 +21,20 @@ ul.files li {
   padding: 0.2rem 0;
 }
 
+/* Secondary metadata line under a file row (from .nfo sidecars) */
+.file-meta {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--pico-muted-color);
+  cursor: default;
+}
+
+/* Folder-level show metadata header (from tvshow.nfo) */
+.show-meta {
+  color: var(--pico-muted-color);
+  cursor: default;
+}
+
 audio,
 video {
   width: 800px;

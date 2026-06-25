@@ -20,6 +20,8 @@ from home_stream.helpers import (
     get_version_info,
     load_config,
     prepare_path_context,
+    read_nfo_metadata,
+    read_tvshow_metadata,
     sanitize_filename,
     secure_path,
     slugify,
@@ -466,3 +468,94 @@ def test_prepare_path_context_with_surrogate_in_path() -> None:
     # The display name must not contain surrogates (would crash template rendering)
     assert "\udc96" not in context["current_name"]
     assert "\ufffd" in context["current_name"]
+
+
+# --- .nfo metadata reader tests ---
+
+EPISODE_NFO = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--created by tinyMediaManager-->
+<episodedetails>
+  <title>Br\u00fcder</title>
+  <originaltitle/>
+  <showtitle>4 Blocks</showtitle>
+  <season>1</season>
+  <episode>1</episode>
+  <rating>0.0</rating>
+  <votes>0</votes>
+  <plot>Toni Hamady plant den Ausstieg.</plot>
+</episodedetails>
+"""
+
+TVSHOW_NFO = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<tvshow>
+  <title>4 Blocks</title>
+  <year>2017</year>
+  <rating>8.1</rating>
+  <plot>Eine Geschichte um Freundschaft und Familie.</plot>
+</tvshow>
+"""
+
+
+def test_read_nfo_metadata_episode(tmp_path) -> None:
+    """Episode .nfo yields title and plot; placeholder rating 0.0 is dropped."""
+    media = tmp_path / "4.blocks.s01e01.mkv"
+    media.write_bytes(b"x")
+    (tmp_path / "4.blocks.s01e01.nfo").write_text(EPISODE_NFO, encoding="utf-8")
+
+    meta = read_nfo_metadata(str(media))
+    assert meta["title"] == "Br\u00fcder"
+    assert meta["plot"].startswith("Toni Hamady")
+    assert "rating" not in meta  # 0.0 dropped
+    assert "year" not in meta
+
+
+def test_read_nfo_metadata_missing(tmp_path) -> None:
+    """No sibling .nfo returns an empty dict."""
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"x")
+    assert read_nfo_metadata(str(media)) == {}
+
+
+def test_read_nfo_metadata_malformed(tmp_path) -> None:
+    """Malformed XML returns an empty dict rather than raising."""
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"x")
+    (tmp_path / "movie.nfo").write_text("<tvshow><title>broken", encoding="utf-8")
+    assert read_nfo_metadata(str(media)) == {}
+
+
+def test_read_nfo_metadata_rejects_doctype(tmp_path) -> None:
+    """A .nfo declaring a DOCTYPE/ENTITY (XML-bomb vector) is refused."""
+    bomb = (
+        '<?xml version="1.0"?>\n'
+        '<!DOCTYPE lolz [<!ENTITY lol "lol">]>\n'
+        "<tvshow><title>&lol;</title></tvshow>"
+    )
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"x")
+    (tmp_path / "movie.nfo").write_text(bomb, encoding="utf-8")
+    assert read_nfo_metadata(str(media)) == {}
+
+
+def test_read_nfo_metadata_oversized(tmp_path) -> None:
+    """A .nfo larger than the size cap is not parsed."""
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"x")
+    big = "<tvshow><title>x</title></tvshow>" + ("<!-- pad -->" * 100000)
+    (tmp_path / "movie.nfo").write_text(big, encoding="utf-8")
+    assert read_nfo_metadata(str(media)) == {}
+
+
+def test_read_tvshow_metadata(tmp_path) -> None:
+    """tvshow.nfo yields title, year, rating and plot."""
+    (tmp_path / "tvshow.nfo").write_text(TVSHOW_NFO, encoding="utf-8")
+    meta = read_tvshow_metadata(str(tmp_path))
+    assert meta["title"] == "4 Blocks"
+    assert meta["year"] == "2017"
+    assert meta["rating"] == "8.1"
+    assert meta["plot"].startswith("Eine Geschichte")
+
+
+def test_read_tvshow_metadata_missing(tmp_path) -> None:
+    """Folder without tvshow.nfo returns an empty dict."""
+    assert read_tvshow_metadata(str(tmp_path)) == {}

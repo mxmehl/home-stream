@@ -302,3 +302,78 @@ def test_play_folder_with_multiple_files(client, app, media_file_slugs, stream_t
             found_stream_url = True
 
     assert found_stream_url, "Expected stream URL not found in any playlist item"
+
+
+# --- .nfo metadata rendering tests ---
+
+
+def test_browse_shows_nfo_title(client, app, media_file) -> None:
+    """A sibling .nfo title is rendered as a secondary line in the browse view."""
+    nfo_path = media_file.rsplit(".", 1)[0] + ".nfo"
+    with open(nfo_path, "w", encoding="utf-8") as f:
+        f.write(
+            '<?xml version="1.0"?>\n'
+            "<episodedetails><title>Real Episode Title</title>"
+            "<rating>0.0</rating><plot>Some plot.</plot></episodedetails>"
+        )
+
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get("/browse/test/with_spaces/")
+    soup = BeautifulSoup(response.data, "html.parser")
+    meta = soup.find("span", class_="file-meta")
+    assert meta is not None
+    assert "Real Episode Title" in meta.get_text()
+    # Placeholder rating 0.0 must not render
+    assert "0.0" not in meta.get_text()
+    # Plot is exposed as a hover tooltip
+    assert meta.get("title") == "Some plot."
+
+
+def test_browse_shows_tvshow_header(client, app, media_file) -> None:
+    """A tvshow.nfo in the folder renders a show metadata header."""
+    folder = dirname(media_file)
+    with open(f"{folder}/tvshow.nfo", "w", encoding="utf-8") as f:
+        f.write(
+            '<?xml version="1.0"?>\n'
+            "<tvshow><title>My Show</title><year>2017</year>"
+            "<rating>8.1</rating></tvshow>"
+        )
+
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get("/browse/test/with_spaces/")
+    soup = BeautifulSoup(response.data, "html.parser")
+    header = soup.find("p", class_="show-meta")
+    assert header is not None
+    text = header.get_text()
+    assert "My Show" in text
+    assert "2017" in text
+    assert "8.1" in text
+
+
+def test_browse_no_nfo_no_meta(client, app, media_file) -> None:
+    """Without .nfo files, no metadata elements are rendered."""
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get("/browse/test/with_spaces/")
+    soup = BeautifulSoup(response.data, "html.parser")
+    assert soup.find("span", class_="file-meta") is None
+    assert soup.find("p", class_="show-meta") is None
+
+
+def test_browse_nfo_disabled(client, app, media_file) -> None:
+    """With the toggle off, .nfo metadata is not read or rendered."""
+    app.config["SHOW_NFO_METADATA"] = False
+    nfo_path = media_file.rsplit(".", 1)[0] + ".nfo"
+    with open(nfo_path, "w", encoding="utf-8") as f:
+        f.write("<episodedetails><title>Hidden</title></episodedetails>")
+
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get("/browse/test/with_spaces/")
+    assert b"Hidden" not in response.data
