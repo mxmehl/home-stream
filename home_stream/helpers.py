@@ -494,6 +494,17 @@ def _parse_nfo(nfo_path: str) -> dict[str, str]:
         if not value or (field in ("rating", "year") and value in ("0", "0.0")):
             continue
         metadata[field] = value
+
+    # Build an SxxExx marker from the <season>/<episode> tags, if both are present.
+    # Season 0 is valid (Kodi uses it for specials), so only non-negative ints qualify;
+    # the -1 placeholders Kodi writes elsewhere are ignored.
+    season = (root.findtext("season") or "").strip()
+    episode = (root.findtext("episode") or "").strip()
+    if season.lstrip("-").isdigit() and episode.lstrip("-").isdigit():
+        s, e = int(season), int(episode)
+        if s >= 0 and e >= 0:
+            metadata["episode_marker"] = f"S{s:02d}E{e:02d}"
+
     return metadata
 
 

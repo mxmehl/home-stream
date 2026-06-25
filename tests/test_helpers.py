@@ -505,8 +505,32 @@ def test_read_nfo_metadata_episode(tmp_path) -> None:
     meta = read_nfo_metadata(str(media))
     assert meta["title"] == "Br\u00fcder"
     assert meta["plot"].startswith("Toni Hamady")
+    assert meta["episode_marker"] == "S01E01"
     assert "rating" not in meta  # 0.0 dropped
     assert "year" not in meta
+
+
+def test_read_nfo_metadata_no_marker_without_season(tmp_path) -> None:
+    """A movie .nfo (no season/episode tags) has no episode marker."""
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"x")
+    (tmp_path / "movie.nfo").write_text(
+        "<movie><title>Der Pate</title><year>1972</year></movie>", encoding="utf-8"
+    )
+    meta = read_nfo_metadata(str(media))
+    assert meta["title"] == "Der Pate"
+    assert "episode_marker" not in meta
+
+
+def test_read_nfo_metadata_ignores_negative_season(tmp_path) -> None:
+    """Placeholder -1 season/episode does not produce a marker."""
+    media = tmp_path / "ep.mkv"
+    media.write_bytes(b"x")
+    (tmp_path / "ep.nfo").write_text(
+        "<episodedetails><title>X</title><season>-1</season><episode>-1</episode></episodedetails>",
+        encoding="utf-8",
+    )
+    assert "episode_marker" not in read_nfo_metadata(str(media))
 
 
 def test_read_nfo_metadata_missing(tmp_path) -> None:

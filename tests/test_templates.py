@@ -314,7 +314,9 @@ def test_browse_shows_nfo_title(client, app, media_file) -> None:
         f.write(
             '<?xml version="1.0"?>\n'
             "<episodedetails><title>Real Episode Title</title>"
-            "<rating>0.0</rating><plot>Some plot.</plot></episodedetails>"
+            "<season>2</season><episode>4</episode>"
+            "<year>2018</year><rating>7.5</rating>"
+            "<plot>Some plot.</plot></episodedetails>"
         )
 
     with client.session_transaction() as sess:
@@ -324,13 +326,15 @@ def test_browse_shows_nfo_title(client, app, media_file) -> None:
     soup = BeautifulSoup(response.data, "html.parser")
     title = soup.find("span", class_="file-title")
     assert title is not None
-    assert "Real Episode Title" in title.get_text()
-    # Placeholder rating 0.0 must not render
-    assert "0.0" not in title.get_text()
-    # Plot is exposed as a hover tooltip
+    assert title.get_text(strip=True) == "Real Episode Title"
+    # Plot is exposed as a hover tooltip on the title
     assert title.get("title") == "Some plot."
-    # The filename is demoted to a muted reference line
-    assert soup.find("span", class_="file-name") is not None
+    # Secondary line: SxxExx - year - rating - filename, in that order
+    name_line = soup.find("span", class_="file-name")
+    assert name_line is not None
+    text = " ".join(name_line.get_text().split())
+    assert text.startswith("S02E04 - 2018 - \u26057.5 - ")
+    assert text.endswith(".mp3")
 
 
 def test_browse_shows_tvshow_header(client, app, media_file) -> None:
