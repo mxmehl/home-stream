@@ -495,17 +495,49 @@ def _parse_nfo(nfo_path: str) -> dict[str, str]:
             continue
         metadata[field] = value
 
-    # Build an SxxExx marker from the <season>/<episode> tags, if both are present.
-    # Season 0 is valid (Kodi uses it for specials), so only non-negative ints qualify;
-    # the -1 placeholders Kodi writes elsewhere are ignored.
+    # Movies use a nested <ratings><rating><value>..</value></rating></ratings> block instead
+    # of the flat <rating> tag. Fall back to it, preferring the default="true" rating.
+    if "rating" not in metadata:
+        rating = _extract_nested_rating(root)
+        if rating:
+            metadata["rating"] = rating
+
+    marker = _extract_episode_marker(root)
+    if marker:
+        metadata["episode_marker"] = marker
+
+    return metadata
+
+
+def _extract_episode_marker(root: ET.Element) -> str:
+    """Return an SxxExx marker from <season>/<episode>, or '' if not a valid episode.
+
+    Season 0 is valid (Kodi uses it for specials), so only non-negative ints qualify;
+    the -1 placeholders Kodi writes elsewhere are ignored.
+    """
     season = (root.findtext("season") or "").strip()
     episode = (root.findtext("episode") or "").strip()
     if season.lstrip("-").isdigit() and episode.lstrip("-").isdigit():
         s, e = int(season), int(episode)
         if s >= 0 and e >= 0:
-            metadata["episode_marker"] = f"S{s:02d}E{e:02d}"
+            return f"S{s:02d}E{e:02d}"
+    return ""
 
-    return metadata
+
+def _extract_nested_rating(root: ET.Element) -> str:
+    """Return the rating value from a <ratings> block, preferring default="true".
+
+    Returns an empty string if no usable (non-zero) rating is found.
+    """
+    ratings = root.findall("ratings/rating")
+    # Prefer the rating marked as default, otherwise take the first.
+    chosen = next((r for r in ratings if r.get("default") == "true"), None)
+    if chosen is None and ratings:
+        chosen = ratings[0]
+    if chosen is None:
+        return ""
+    value = (chosen.findtext("value") or "").strip()
+    return "" if value in ("", "0", "0.0") else value
 
 
 def read_nfo_metadata(media_real_path: str) -> dict[str, str]:

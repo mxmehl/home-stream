@@ -522,6 +522,35 @@ def test_read_nfo_metadata_no_marker_without_season(tmp_path) -> None:
     assert "episode_marker" not in meta
 
 
+def test_read_nfo_metadata_nested_movie_rating(tmp_path) -> None:
+    """Movie .nfo with a nested <ratings> block yields the default rating value."""
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"x")
+    (tmp_path / "movie.nfo").write_text(
+        "<movie><title>Der Pate</title>"
+        '<ratings><rating default="true" max="10" name="imdb">'
+        "<value>7.3</value><votes>397384</votes></rating></ratings>"
+        "</movie>",
+        encoding="utf-8",
+    )
+    meta = read_nfo_metadata(str(media))
+    assert meta["rating"] == "7.3"
+
+
+def test_read_nfo_metadata_nested_rating_prefers_default(tmp_path) -> None:
+    """When multiple nested ratings exist, the one marked default wins."""
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"x")
+    (tmp_path / "movie.nfo").write_text(
+        "<movie><title>X</title><ratings>"
+        '<rating name="themoviedb"><value>6.1</value></rating>'
+        '<rating default="true" name="imdb"><value>7.3</value></rating>'
+        "</ratings></movie>",
+        encoding="utf-8",
+    )
+    assert read_nfo_metadata(str(media))["rating"] == "7.3"
+
+
 def test_read_nfo_metadata_ignores_negative_season(tmp_path) -> None:
     """Placeholder -1 season/episode does not produce a marker."""
     media = tmp_path / "ep.mkv"
