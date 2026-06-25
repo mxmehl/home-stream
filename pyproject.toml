@@ -25,6 +25,7 @@ dependencies = [
     "flask>=3.1.2,<4",
     "flask-wtf>=1.2.2,<2",
     "flask-limiter[redis, valkey]>=4.0.0,<5",
+    "mutagen>=1.47.0,<2",
 ]
 
 [project.urls]

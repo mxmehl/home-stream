@@ -37,10 +37,11 @@ protocol: https
 # Optional: internal URI namespace used for X-Accel-Redirect (xaccel only).
 # Must match the `internal` location block in your nginx config. Default: /_protected
 # download_internal_prefix: /_protected
-# Optional: show metadata from Kodi-style .nfo sidecar files (title, year, rating, plot)
-# in the browse view. Reads "<name>.nfo" next to each media file and a "tvshow.nfo" in
-# the folder. Sorting still happens on file name. Default: true
-# show_nfo_metadata: true
+# Optional: show media metadata in the browse view. For video, reads Kodi-style ".nfo"
+# sidecar files (title, year, rating, plot) next to each file and a "tvshow.nfo" in the
+# folder. For audio, reads embedded tags (track, title, album, duration). Sorting still
+# happens on file name. Default: true
+# show_metadata: true
 # Optional: Modified rate limits following https://flask-limiter.readthedocs.io/en/stable/configuration.html#rate-limit-string-notation
 # rate_limit_default: 25 per 5 minutes
 # rate_limit_login: 2 per 10 seconds

@@ -12,6 +12,7 @@ from flask import Flask, current_app, request
 
 from home_stream.helpers import (
     REQUIRED_CONFIG_KEYS,
+    _format_duration,
     build_file_download_response,
     compute_session_signature,
     deslugify,
@@ -20,6 +21,7 @@ from home_stream.helpers import (
     get_version_info,
     load_config,
     prepare_path_context,
+    read_audio_metadata,
     read_nfo_metadata,
     read_tvshow_metadata,
     sanitize_filename,
@@ -612,3 +614,61 @@ def test_read_tvshow_metadata(tmp_path) -> None:
 def test_read_tvshow_metadata_missing(tmp_path) -> None:
     """Folder without tvshow.nfo returns an empty dict."""
     assert read_tvshow_metadata(str(tmp_path)) == {}
+
+
+# --- audio metadata reader tests ---
+
+
+def test_format_duration() -> None:
+    """Durations format as m:ss, and h:mm:ss when at least one hour."""
+    assert _format_duration(0) == "0:00"
+    assert _format_duration(5) == "0:05"
+    assert _format_duration(355) == "5:55"
+    assert _format_duration(3661) == "1:01:01"
+    assert _format_duration(59.6) == "1:00"  # rounds up
+
+
+def _write_tagged_mp3(path) -> None:
+    """Write a small real MP3 (silent frames) carrying EasyID3 tags for testing."""
+    from mutagen.easyid3 import EasyID3
+
+    # Eight valid silent MPEG-1 Layer III frames (44.1 kHz, 128 kbps) so mutagen's
+    # format sniffer recognizes the file as MP3.
+    frame = bytes.fromhex("fffb9064") + b"\x00" * 413
+    path.write_bytes(frame * 8)
+    tags = EasyID3()
+    tags["title"] = "Bohemian Rhapsody"
+    tags["album"] = "A Night at the Opera"
+    tags["tracknumber"] = "11/12"
+    tags.save(str(path))
+
+
+def test_read_audio_metadata_tags(tmp_path) -> None:
+    """Audio tags are read and normalized (track stripped of total, tagged audio)."""
+    media = tmp_path / "song.mp3"
+    _write_tagged_mp3(media)
+
+    meta = read_audio_metadata(str(media))
+    assert meta["kind"] == "audio"
+    assert meta["title"] == "Bohemian Rhapsody"
+    assert meta["album"] == "A Night at the Opera"
+    assert meta["track"] == "11"  # "11/12" -> "11"
+    assert "duration" in meta  # silent frames still have a measurable length
+
+
+def test_read_audio_metadata_untagged(tmp_path) -> None:
+    """An audio file with no tags exposes no title/album/track."""
+    frame = bytes.fromhex("fffb9064") + b"\x00" * 413
+    media = tmp_path / "untagged.mp3"
+    media.write_bytes(frame * 8)
+    meta = read_audio_metadata(str(media))
+    assert "title" not in meta
+    assert "album" not in meta
+    assert "track" not in meta
+
+
+def test_read_audio_metadata_not_audio(tmp_path) -> None:
+    """A non-audio / unreadable file returns an empty dict rather than raising."""
+    media = tmp_path / "notaudio.mp3"
+    media.write_bytes(b"this is not audio")
+    assert read_audio_metadata(str(media)) == {}
