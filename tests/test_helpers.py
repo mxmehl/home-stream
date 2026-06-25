@@ -638,6 +638,7 @@ def _write_tagged_mp3(path) -> None:
     path.write_bytes(frame * 8)
     tags = EasyID3()
     tags["title"] = "Bohemian Rhapsody"
+    tags["artist"] = "Queen"
     tags["album"] = "A Night at the Opera"
     tags["tracknumber"] = "11/12"
     tags.save(str(path))
@@ -651,6 +652,7 @@ def test_read_audio_metadata_tags(tmp_path) -> None:
     meta = read_audio_metadata(str(media))
     assert meta["kind"] == "audio"
     assert meta["title"] == "Bohemian Rhapsody"
+    assert meta["artist"] == "Queen"
     assert meta["album"] == "A Night at the Opera"
     assert meta["track"] == "11"  # "11/12" -> "11"
     assert "duration" in meta  # silent frames still have a measurable length

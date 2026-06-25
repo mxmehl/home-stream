@@ -397,7 +397,7 @@ def test_browse_nfo_disabled(client, app, media_file) -> None:
 
 
 def test_browse_shows_audio_metadata(client, app, media_file) -> None:
-    """Audio tags render as '#track - title - album - duration - filename' (no bold title)."""
+    """Audio: primary 'NN. title', secondary 'duration - artist - album - filename'."""
     from mutagen.easyid3 import EasyID3
 
     # Replace the fixture's media file with a real tagged MP3 in the same folder.
@@ -406,6 +406,7 @@ def test_browse_shows_audio_metadata(client, app, media_file) -> None:
         f.write(frame * 8)
     tags = EasyID3()
     tags["title"] = "Bohemian Rhapsody"
+    tags["artist"] = "Queen"
     tags["album"] = "A Night at the Opera"
     tags["tracknumber"] = "11/12"
     tags.save(media_file)
@@ -416,10 +417,13 @@ def test_browse_shows_audio_metadata(client, app, media_file) -> None:
     response = client.get("/browse/test/with_spaces/")
     soup = BeautifulSoup(response.data, "html.parser")
 
-    # Audio uses no promoted bold title
-    assert soup.find("span", class_="file-title") is None
+    # Primary line: zero-padded track number + title
+    title = soup.find("span", class_="file-title")
+    assert title is not None
+    assert title.get_text(strip=True) == "11. Bohemian Rhapsody"
+    # Secondary line: duration - artist - album - filename
     name_line = soup.find("span", class_="file-name")
     assert name_line is not None
     text = " ".join(name_line.get_text().split())
-    assert text.startswith("#11 - Bohemian Rhapsody - A Night at the Opera - ")
+    assert " - Queen - A Night at the Opera - " in text
     assert text.endswith(".mp3")

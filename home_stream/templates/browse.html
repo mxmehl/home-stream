@@ -30,17 +30,19 @@
   {%- for file in files %}
   <li>
     {%- if file.metadata and file.metadata.kind == 'audio' %}
-    {{ file.name }} —
+    <span class="file-title">
+      {%- if file.metadata.track %}{{ "%02d." | format(file.metadata.track | int) }} {% endif %}
+      {%- if file.metadata.title %}{{ file.metadata.title }}{% else %}{{ file.name }}{% endif %}
+    </span> —
     <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
     <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
     <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
       🔗 Copy URL
     </button>
     <span class="file-name">
-      {%- if file.metadata.track %}#{{ file.metadata.track }} - {% endif %}
-      {%- if file.metadata.title %}{{ file.metadata.title }} - {% endif %}
-      {%- if file.metadata.album %}{{ file.metadata.album }} - {% endif %}
       {%- if file.metadata.duration %}{{ file.metadata.duration }} - {% endif %}
+      {%- if file.metadata.artist %}{{ file.metadata.artist }} - {% endif %}
+      {%- if file.metadata.album %}{{ file.metadata.album }} - {% endif %}
       {{- file.name }}</span>
     {%- elif file.metadata and file.metadata.title %}
     <span class="file-title">{{ file.metadata.title }}</span> —

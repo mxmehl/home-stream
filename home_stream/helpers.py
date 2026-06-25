@@ -566,7 +566,7 @@ def _format_duration(seconds: float) -> str:
 
 
 def read_audio_metadata(media_real_path: str) -> dict[str, str]:
-    """Read embedded tags from an audio file (track, title, album, duration).
+    """Read embedded tags from an audio file (track, title, artist, album, duration).
 
     Returns an empty dict on any problem so callers never have to handle errors.
     Empty/placeholder values are omitted.
@@ -586,12 +586,10 @@ def read_audio_metadata(media_real_path: str) -> dict[str, str]:
             value = value[0] if value else ""
         return str(value).strip() if value else ""
 
-    title = first_tag("title")
-    if title:
-        metadata["title"] = title
-    album = first_tag("album")
-    if album:
-        metadata["album"] = album
+    for field in ("title", "artist", "album"):
+        value = first_tag(field)
+        if value:
+            metadata[field] = value
 
     # Track number may be "5" or "5/12"; keep only the leading number.
     track = first_tag("tracknumber").split("/")[0].strip()
