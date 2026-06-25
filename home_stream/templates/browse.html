@@ -23,9 +23,9 @@
   <li>
     {{ file.name }} —
     <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
-    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play in browser</button></a>
+    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
     <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
-      ▶️ Copy Stream URL
+      🔗 Copy URL
     </button>
     {%- if file.metadata %}
     <span class="file-meta"{% if file.metadata.plot %} title="{{ file.metadata.plot }}"{% endif %}>
