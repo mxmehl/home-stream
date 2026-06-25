@@ -24,20 +24,25 @@
     {%- if file.metadata and file.metadata.title %}
     <span class="file-title"{% if file.metadata.plot %} title="{{ file.metadata.plot }}"{% endif %}>
       {{ file.metadata.title }}
-    </span>
-    <span class="file-name">
-      {%- if file.metadata.episode_marker %}{{ file.metadata.episode_marker }} - {% endif %}
-      {%- if file.metadata.year %}{{ file.metadata.year }} - {% endif %}
-      {%- if file.metadata.rating %}★{{ file.metadata.rating }} - {% endif %}
-      {{- file.name }}</span> —
-    {%- else %}
-    {{ file.name }} —
-    {%- endif %}
+    </span> —
     <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
     <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
     <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
       🔗 Copy URL
     </button>
+    <span class="file-name">
+      {%- if file.metadata.episode_marker %}{{ file.metadata.episode_marker }} - {% endif %}
+      {%- if file.metadata.year %}{{ file.metadata.year }} - {% endif %}
+      {%- if file.metadata.rating %}★{{ file.metadata.rating }} - {% endif %}
+      {{- file.name }}</span>
+    {%- else %}
+    {{ file.name }} —
+    <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
+    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
+    <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
+      🔗 Copy URL
+    </button>
+    {%- endif %}
   </li>
   {%- endfor %}
 </ul>
