@@ -321,6 +321,9 @@ def test_browse_shows_nfo_title(client, app, media_file) -> None:
             "<episodedetails><title>Real Episode Title</title>"
             "<season>2</season><episode>4</episode>"
             "<year>2018</year><rating>7.5</rating>"
+            "<fileinfo><streamdetails><video>"
+            "<durationinseconds>1325</durationinseconds>"
+            "</video></streamdetails></fileinfo>"
             "<plot>Some plot.</plot></episodedetails>"
         )
 
@@ -337,9 +340,9 @@ def test_browse_shows_nfo_title(client, app, media_file) -> None:
     assert details is not None
     summary = details.find("summary", class_="file-name")
     assert summary is not None
-    # Secondary (summary) line: SxxExx - year - rating - filename, in that order
+    # Secondary (summary) line: SxxExx - year - rating - duration - filename, in that order
     text = " ".join(summary.get_text().split())
-    assert text.startswith("S02E04 - 2018 - \u26057.5 - ")
+    assert text.startswith("S02E04 - 2018 - \u26057.5 - 22:05 - ")
     assert text.endswith(".mp4")
     # Plot is real DOM text (not a tooltip), inside the details
     plot = details.find("p", class_="file-plot")

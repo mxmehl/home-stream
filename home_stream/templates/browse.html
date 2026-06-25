@@ -55,6 +55,7 @@
       {%- if file.metadata.episode_marker %}{{ file.metadata.episode_marker }} - {% endif %}
       {%- if file.metadata.year %}{{ file.metadata.year }} - {% endif %}
       {%- if file.metadata.rating %}★{{ file.metadata.rating }} - {% endif %}
+      {%- if file.metadata.duration %}{{ file.metadata.duration }} - {% endif %}
       {{- file.name }}
     {%- endset %}
     {%- if file.metadata.plot %}

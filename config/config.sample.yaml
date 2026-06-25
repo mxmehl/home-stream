@@ -38,9 +38,9 @@ protocol: https
 # Must match the `internal` location block in your nginx config. Default: /_protected
 # download_internal_prefix: /_protected
 # Optional: show media metadata in the browse view. For video, reads Kodi-style ".nfo"
-# sidecar files (title, year, rating, plot) next to each file and a "tvshow.nfo" in the
-# folder. For audio, reads embedded tags (track, title, artist, album, duration). Sorting
-# still happens on file name. Default: true
+# sidecar files (title, year, rating, duration, plot) next to each file and a "tvshow.nfo"
+# in the folder. For audio, reads embedded tags (track, title, artist, album, duration).
+# Sorting still happens on file name. Default: true
 # show_metadata: true
 # Optional: Modified rate limits following https://flask-limiter.readthedocs.io/en/stable/configuration.html#rate-limit-string-notation
 # rate_limit_default: 25 per 5 minutes

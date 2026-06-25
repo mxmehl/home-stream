@@ -490,14 +490,7 @@ def _parse_nfo(nfo_path: str) -> dict[str, str]:
     except ET.ParseError:
         return {}
 
-    metadata: dict[str, str] = {}
-    for field in NFO_FIELDS:
-        element = root.find(field)
-        value = (element.text or "").strip() if element is not None else ""
-        # Drop empty values and placeholder zero ratings/years.
-        if not value or (field in ("rating", "year") and value in ("0", "0.0")):
-            continue
-        metadata[field] = value
+    metadata: dict[str, str] = _extract_nfo_fields(root)
 
     # Movies use a nested <ratings><rating><value>..</value></rating></ratings> block instead
     # of the flat <rating> tag. Fall back to it, preferring the default="true" rating.
@@ -510,7 +503,31 @@ def _parse_nfo(nfo_path: str) -> dict[str, str]:
     if marker:
         metadata["episode_marker"] = marker
 
+    duration = _extract_nfo_duration(root)
+    if duration:
+        metadata["duration"] = duration
+
     return metadata
+
+
+def _extract_nfo_fields(root: ET.Element) -> dict[str, str]:
+    """Extract the flat NFO_FIELDS, dropping empty values and placeholder zero rating/year."""
+    metadata: dict[str, str] = {}
+    for field in NFO_FIELDS:
+        element = root.find(field)
+        value = (element.text or "").strip() if element is not None else ""
+        if not value or (field in ("rating", "year") and value in ("0", "0.0")):
+            continue
+        metadata[field] = value
+    return metadata
+
+
+def _extract_nfo_duration(root: ET.Element) -> str:
+    """Return a formatted duration from streamdetails, or '' if absent/zero."""
+    secs = (root.findtext("fileinfo/streamdetails/video/durationinseconds") or "").strip()
+    if secs.isdigit() and int(secs) > 0:
+        return _format_duration(int(secs))
+    return ""
 
 
 def _extract_episode_marker(root: ET.Element) -> str:

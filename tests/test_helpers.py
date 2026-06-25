@@ -616,6 +616,19 @@ def test_read_tvshow_metadata_missing(tmp_path) -> None:
     assert read_tvshow_metadata(str(tmp_path)) == {}
 
 
+def test_read_nfo_metadata_duration(tmp_path) -> None:
+    """Duration is read from fileinfo/streamdetails/video/durationinseconds."""
+    media = tmp_path / "movie.mkv"
+    media.write_bytes(b"x")
+    (tmp_path / "movie.nfo").write_text(
+        "<movie><title>Der Pate</title><fileinfo><streamdetails><video>"
+        "<durationinseconds>7137</durationinseconds></video></streamdetails></fileinfo></movie>",
+        encoding="utf-8",
+    )
+    meta = read_nfo_metadata(str(media))
+    assert meta["duration"] == "1:58:57"  # 7137s
+
+
 # --- audio metadata reader tests ---
 
 
