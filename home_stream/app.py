@@ -193,9 +193,7 @@ def init_routes(app: Flask, limiter: Limiter) -> None:  # noqa: C901, PLR0915
         )
 
         # Folder-level metadata from a tvshow.nfo, if present and enabled
-        show_metadata = (
-            read_tvshow_metadata(real_path) if app.config.get("SHOW_NFO_METADATA") else {}
-        )
+        show_metadata = read_tvshow_metadata(real_path) if app.config.get("SHOW_METADATA") else {}
 
         return render_template(
             "browse.html",

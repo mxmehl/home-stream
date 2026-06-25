@@ -29,7 +29,22 @@
 <ul class="files">
   {%- for file in files %}
   <li>
-    {%- if file.metadata and file.metadata.title %}
+    {%- if file.metadata and file.metadata.kind == 'audio' %}
+    <span class="file-title">
+      {%- if file.metadata.track %}{{ "%02d." | format(file.metadata.track | int) }} {% endif %}
+      {%- if file.metadata.title %}{{ file.metadata.title }}{% else %}{{ file.name }}{% endif %}
+    </span> —
+    <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
+    <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
+    <button onclick="copyToClipboard('{{ file.stream_url }}', this)">
+      🔗 Copy URL
+    </button>
+    <span class="file-name">
+      {%- if file.metadata.artist %}{{ file.metadata.artist }} - {% endif %}
+      {%- if file.metadata.album %}{{ file.metadata.album }} - {% endif %}
+      {%- if file.metadata.duration %}{{ file.metadata.duration }} - {% endif %}
+      {{- file.name }}</span>
+    {%- elif file.metadata and file.metadata.title %}
     <span class="file-title">{{ file.metadata.title }}</span> —
     <a href="{{ file.stream_url }}" target="_blank"><button>💾 Download</button></a>
     <a href="{{ url_for('play', subpath=file.slug_path) }}"><button>🎬 Play</button></a>
@@ -40,6 +55,7 @@
       {%- if file.metadata.episode_marker %}{{ file.metadata.episode_marker }} - {% endif %}
       {%- if file.metadata.year %}{{ file.metadata.year }} - {% endif %}
       {%- if file.metadata.rating %}★{{ file.metadata.rating }} - {% endif %}
+      {%- if file.metadata.duration %}{{ file.metadata.duration }} - {% endif %}
       {{- file.name }}
     {%- endset %}
     {%- if file.metadata.plot %}

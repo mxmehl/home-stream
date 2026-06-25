@@ -16,7 +16,7 @@ A web-based browser and streaming interface for local media files. Supports in-b
 ## Features
 
 - Browse local folders and media files
-- Show titles and metadata from Kodi-style `.nfo` files in the browse view (toggleable)
+- Show titles and metadata in the browse view (toggleable): Kodi-style `.nfo` files for video, embedded tags for audio
 - Secure user login
 - In-browser audio/video player (if supported by your browser)
 - HTTP Basic Auth fallback for external players (VLC, mpv, etc.) using authenticated links

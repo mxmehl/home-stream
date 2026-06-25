@@ -309,13 +309,21 @@ def test_play_folder_with_multiple_files(client, app, media_file_slugs, stream_t
 
 def test_browse_shows_nfo_title(client, app, media_file) -> None:
     """A sibling .nfo title is rendered as the primary line, filename demoted below."""
-    nfo_path = media_file.rsplit(".", 1)[0] + ".nfo"
+    # Create a video file (routes to the .nfo reader) in the same browsable folder.
+    folder = dirname(media_file)
+    video_path = f"{folder}/episode.mp4"
+    with open(video_path, "wb") as f:
+        f.write(b"x")
+    nfo_path = video_path.rsplit(".", 1)[0] + ".nfo"
     with open(nfo_path, "w", encoding="utf-8") as f:
         f.write(
             '<?xml version="1.0"?>\n'
             "<episodedetails><title>Real Episode Title</title>"
             "<season>2</season><episode>4</episode>"
             "<year>2018</year><rating>7.5</rating>"
+            "<fileinfo><streamdetails><video>"
+            "<durationinseconds>1325</durationinseconds>"
+            "</video></streamdetails></fileinfo>"
             "<plot>Some plot.</plot></episodedetails>"
         )
 
@@ -332,10 +340,10 @@ def test_browse_shows_nfo_title(client, app, media_file) -> None:
     assert details is not None
     summary = details.find("summary", class_="file-name")
     assert summary is not None
-    # Secondary (summary) line: SxxExx - year - rating - filename, in that order
+    # Secondary (summary) line: SxxExx - year - rating - duration - filename, in that order
     text = " ".join(summary.get_text().split())
-    assert text.startswith("S02E04 - 2018 - \u26057.5 - ")
-    assert text.endswith(".mp3")
+    assert text.startswith("S02E04 - 2018 - \u26057.5 - 22:05 - ")
+    assert text.endswith(".mp4")
     # Plot is real DOM text (not a tooltip), inside the details
     plot = details.find("p", class_="file-plot")
     assert plot is not None
@@ -379,7 +387,7 @@ def test_browse_no_nfo_no_meta(client, app, media_file) -> None:
 
 def test_browse_nfo_disabled(client, app, media_file) -> None:
     """With the toggle off, .nfo metadata is not read or rendered."""
-    app.config["SHOW_NFO_METADATA"] = False
+    app.config["SHOW_METADATA"] = False
     nfo_path = media_file.rsplit(".", 1)[0] + ".nfo"
     with open(nfo_path, "w", encoding="utf-8") as f:
         f.write("<episodedetails><title>Hidden</title></episodedetails>")
@@ -389,3 +397,36 @@ def test_browse_nfo_disabled(client, app, media_file) -> None:
 
     response = client.get("/browse/test/with_spaces/")
     assert b"Hidden" not in response.data
+
+
+def test_browse_shows_audio_metadata(client, app, media_file) -> None:
+    """Audio: primary 'NN. title', secondary 'duration - artist - album - filename'."""
+    from mutagen.easyid3 import EasyID3
+
+    # Replace the fixture's media file with a real tagged MP3 in the same folder.
+    frame = bytes.fromhex("fffb9064") + b"\x00" * 413
+    with open(media_file, "wb") as f:
+        f.write(frame * 8)
+    tags = EasyID3()
+    tags["title"] = "Bohemian Rhapsody"
+    tags["artist"] = "Queen"
+    tags["album"] = "A Night at the Opera"
+    tags["tracknumber"] = "11/12"
+    tags.save(media_file)
+
+    with client.session_transaction() as sess:
+        login_session(sess, app)
+
+    response = client.get("/browse/test/with_spaces/")
+    soup = BeautifulSoup(response.data, "html.parser")
+
+    # Primary line: zero-padded track number + title
+    title = soup.find("span", class_="file-title")
+    assert title is not None
+    assert title.get_text(strip=True) == "11. Bohemian Rhapsody"
+    # Secondary line: artist - album - duration - filename
+    name_line = soup.find("span", class_="file-name")
+    assert name_line is not None
+    text = " ".join(name_line.get_text().split())
+    assert text.startswith("Queen - A Night at the Opera - ")
+    assert text.endswith(".mp3")

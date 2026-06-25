@@ -15,6 +15,7 @@ import subprocess
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
+import mutagen
 import yaml
 from bcrypt import checkpw
 from flask import Flask, Response, abort, current_app, request, send_file
@@ -88,8 +89,8 @@ def load_config(app: Flask, filename: str) -> None:
         app.config.get("DOWNLOAD_INTERNAL_PREFIX", "/_protected")
     ).rstrip("/")
 
-    # Show metadata from Kodi-style .nfo sidecar files in the browse view (default on).
-    app.config["SHOW_NFO_METADATA"] = bool(app.config.get("SHOW_NFO_METADATA", True))
+    # Show metadata from .nfo sidecars (video) and embedded tags (audio) in browse (default on).
+    app.config["SHOW_METADATA"] = bool(app.config.get("SHOW_METADATA", True))
 
     # Print the loaded config in DEBUG mode
     app.logger.debug(app.config)
@@ -305,10 +306,13 @@ def list_folder_entries_with_stream_urls(
                     "slug_path": file_slug_path,
                     "stream_url": stream_url,
                 }
-                # one .nfo open per media file per view; ceiling is O(files) filesystem stats on a
-                # folder render. Upgrade path: cache by path+mtime.
-                if current_app.config.get("SHOW_NFO_METADATA"):
-                    metadata = read_nfo_metadata(full)
+                # one metadata read per media file per view; ceiling is O(files) filesystem
+                # operations on a folder render. Upgrade path: cache by path+mtime.
+                if current_app.config.get("SHOW_METADATA"):
+                    if ext in current_app.config["AUDIO_EXTENSIONS"]:
+                        metadata = read_audio_metadata(full)
+                    else:
+                        metadata = read_nfo_metadata(full)
                     if metadata:
                         entry["metadata"] = metadata
                 files.append(entry)
@@ -486,14 +490,7 @@ def _parse_nfo(nfo_path: str) -> dict[str, str]:
     except ET.ParseError:
         return {}
 
-    metadata: dict[str, str] = {}
-    for field in NFO_FIELDS:
-        element = root.find(field)
-        value = (element.text or "").strip() if element is not None else ""
-        # Drop empty values and placeholder zero ratings/years.
-        if not value or (field in ("rating", "year") and value in ("0", "0.0")):
-            continue
-        metadata[field] = value
+    metadata: dict[str, str] = _extract_nfo_fields(root)
 
     # Movies use a nested <ratings><rating><value>..</value></rating></ratings> block instead
     # of the flat <rating> tag. Fall back to it, preferring the default="true" rating.
@@ -506,7 +503,31 @@ def _parse_nfo(nfo_path: str) -> dict[str, str]:
     if marker:
         metadata["episode_marker"] = marker
 
+    duration = _extract_nfo_duration(root)
+    if duration:
+        metadata["duration"] = duration
+
     return metadata
+
+
+def _extract_nfo_fields(root: ET.Element) -> dict[str, str]:
+    """Extract the flat NFO_FIELDS, dropping empty values and placeholder zero rating/year."""
+    metadata: dict[str, str] = {}
+    for field in NFO_FIELDS:
+        element = root.find(field)
+        value = (element.text or "").strip() if element is not None else ""
+        if not value or (field in ("rating", "year") and value in ("0", "0.0")):
+            continue
+        metadata[field] = value
+    return metadata
+
+
+def _extract_nfo_duration(root: ET.Element) -> str:
+    """Return a formatted duration from streamdetails, or '' if absent/zero."""
+    secs = (root.findtext("fileinfo/streamdetails/video/durationinseconds") or "").strip()
+    if secs.isdigit() and int(secs) > 0:
+        return _format_duration(int(secs))
+    return ""
 
 
 def _extract_episode_marker(root: ET.Element) -> str:
@@ -549,3 +570,53 @@ def read_nfo_metadata(media_real_path: str) -> dict[str, str]:
 def read_tvshow_metadata(folder_real_path: str) -> dict[str, str]:
     """Read metadata from a folder's tvshow.nfo, if present."""
     return _parse_nfo(os.path.join(folder_real_path, "tvshow.nfo"))
+
+
+def _format_duration(seconds: float) -> str:
+    """Format a duration in seconds as m:ss, or h:mm:ss when at least one hour."""
+    total = round(seconds)
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
+def read_audio_metadata(media_real_path: str) -> dict[str, str]:
+    """Read embedded tags from an audio file (track, title, artist, album, duration).
+
+    Returns an empty dict on any problem so callers never have to handle errors.
+    Empty/placeholder values are omitted.
+    """
+    try:
+        audio = mutagen.File(media_real_path, easy=True)
+    except Exception:  # noqa: BLE001 (mutagen raises a variety of errors on bad/odd files)
+        return {}
+    if audio is None:
+        return {}
+
+    metadata: dict[str, str] = {}
+
+    def first_tag(key: str) -> str:
+        value = audio.get(key) if audio.tags else None
+        if isinstance(value, list):
+            value = value[0] if value else ""
+        return str(value).strip() if value else ""
+
+    for field in ("title", "artist", "album"):
+        value = first_tag(field)
+        if value:
+            metadata[field] = value
+
+    # Track number may be "5" or "5/12"; keep only the leading number.
+    track = first_tag("tracknumber").split("/")[0].strip()
+    if track.isdigit() and int(track) > 0:
+        metadata["track"] = str(int(track))
+
+    length = getattr(getattr(audio, "info", None), "length", 0) or 0
+    if length > 0:
+        metadata["duration"] = _format_duration(length)
+
+    if metadata:
+        metadata["kind"] = "audio"
+    return metadata
