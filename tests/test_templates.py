@@ -421,9 +421,9 @@ def test_browse_shows_audio_metadata(client, app, media_file) -> None:
     title = soup.find("span", class_="file-title")
     assert title is not None
     assert title.get_text(strip=True) == "11. Bohemian Rhapsody"
-    # Secondary line: duration - artist - album - filename
+    # Secondary line: artist - album - duration - filename
     name_line = soup.find("span", class_="file-name")
     assert name_line is not None
     text = " ".join(name_line.get_text().split())
-    assert " - Queen - A Night at the Opera - " in text
+    assert text.startswith("Queen - A Night at the Opera - ")
     assert text.endswith(".mp3")

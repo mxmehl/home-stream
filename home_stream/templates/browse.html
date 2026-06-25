@@ -40,9 +40,9 @@
       🔗 Copy URL
     </button>
     <span class="file-name">
-      {%- if file.metadata.duration %}{{ file.metadata.duration }} - {% endif %}
       {%- if file.metadata.artist %}{{ file.metadata.artist }} - {% endif %}
       {%- if file.metadata.album %}{{ file.metadata.album }} - {% endif %}
+      {%- if file.metadata.duration %}{{ file.metadata.duration }} - {% endif %}
       {{- file.name }}</span>
     {%- elif file.metadata and file.metadata.title %}
     <span class="file-title">{{ file.metadata.title }}</span> —
