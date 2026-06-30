@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.1](https://github.com/mxmehl/home-stream/compare/v1.7.0...v1.7.1) (2026-06-30)
+
+
+### ⚙️ Chores
+
+* **deps:** lock file maintenance ([#189](https://github.com/mxmehl/home-stream/issues/189)) ([44ba1dd](https://github.com/mxmehl/home-stream/commit/44ba1dd90b0e59b8880269d14c1909540c097c52))
+* **deps:** update actions/attest-build-provenance action to v4.1.1 ([#190](https://github.com/mxmehl/home-stream/issues/190)) ([4c8aae8](https://github.com/mxmehl/home-stream/commit/4c8aae82f2def3ba7adfef0631f6e9007c76302c))
+* **deps:** update actions/setup-python action to v6.3.0 ([#187](https://github.com/mxmehl/home-stream/issues/187)) ([b6ba7ed](https://github.com/mxmehl/home-stream/commit/b6ba7ed194dff6ca2d8a1132676e5f860e590f23))
+
 ## [1.7.0](https://github.com/mxmehl/home-stream/compare/v1.6.0...v1.7.0) (2026-06-25)
 
 
