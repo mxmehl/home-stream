@@ -116,10 +116,10 @@ def init_routes(app: Flask, limiter: Limiter) -> None:  # noqa: C901, PLR0915
 
     def is_authenticated() -> bool:
         """Check if the current session matches a valid user and password hash."""
-        username = session.get("username")
-        auth_signature = session.get("auth_signature")
-        users = app.config.get("USERS", {})
-        secret = app.config["STREAM_SECRET"]
+        username: str = session.get("username", "")
+        auth_signature: str = session.get("auth_signature", "")
+        users: dict = app.config.get("USERS", {})
+        secret: str = app.config["STREAM_SECRET"]
 
         if username not in users:
             return False
