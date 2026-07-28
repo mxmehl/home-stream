@@ -74,6 +74,7 @@ Passwords must be **bcrypt-hashed**. You can generate them using Python:
 
 ```python
 import bcrypt
+
 print(bcrypt.hashpw(b"your-password", bcrypt.gensalt()).decode())
 ```
 
