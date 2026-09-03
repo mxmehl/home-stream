@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.7.1](https://github.com/mxmehl/home-stream/compare/v1.7.0...v1.7.1) (2026-09-03)
+
+
+### ⚙️ Chores
+
+* add license-files, repository URL, and changelog URL to pyproject.toml ([#199](https://github.com/mxmehl/home-stream/issues/199)) ([694007a](https://github.com/mxmehl/home-stream/commit/694007a6faef0db69d49a246e54589e26ba7b157))
+* **deps:** lock file maintenance ([#189](https://github.com/mxmehl/home-stream/issues/189)) ([44ba1dd](https://github.com/mxmehl/home-stream/commit/44ba1dd90b0e59b8880269d14c1909540c097c52))
+* **deps:** lock file maintenance ([#193](https://github.com/mxmehl/home-stream/issues/193)) ([b2f876e](https://github.com/mxmehl/home-stream/commit/b2f876e520392dd201ec9bab4947334fa3abd692))
+* **deps:** lock file maintenance ([#198](https://github.com/mxmehl/home-stream/issues/198)) ([036c73a](https://github.com/mxmehl/home-stream/commit/036c73a9a63fa2c8bfe92b33b67e86bd089001c6))
+* **deps:** lock file maintenance ([#201](https://github.com/mxmehl/home-stream/issues/201)) ([f1c7050](https://github.com/mxmehl/home-stream/commit/f1c7050f72fc5237693fc1c146c9672388a298c3))
+* **deps:** lock file maintenance ([#208](https://github.com/mxmehl/home-stream/issues/208)) ([b6d41e1](https://github.com/mxmehl/home-stream/commit/b6d41e1b6642706c2930da4aa7cd7a6f09221611))
+* **deps:** lock file maintenance ([#214](https://github.com/mxmehl/home-stream/issues/214)) ([6cccb9c](https://github.com/mxmehl/home-stream/commit/6cccb9c9c08a7ce9ffe888e4174217e7dcb97f6e))
+* **deps:** lock file maintenance ([#218](https://github.com/mxmehl/home-stream/issues/218)) ([4a84ab7](https://github.com/mxmehl/home-stream/commit/4a84ab73006e3bb030967f646cb561f8df02e199))
+* **deps:** lock file maintenance ([#220](https://github.com/mxmehl/home-stream/issues/220)) ([fea6544](https://github.com/mxmehl/home-stream/commit/fea6544702e5bcbb6acd3c82306e83345c723d44))
+* **deps:** lock file maintenance ([#221](https://github.com/mxmehl/home-stream/issues/221)) ([29199cf](https://github.com/mxmehl/home-stream/commit/29199cf64eb2751e400f3598502275ff0a406a9b))
+* **deps:** lock file maintenance ([#222](https://github.com/mxmehl/home-stream/issues/222)) ([bf368b5](https://github.com/mxmehl/home-stream/commit/bf368b5375229ad8d94c3de709c18f66f38aadd9))
+* **deps:** update actions/attest-build-provenance action to v4.1.1 ([#190](https://github.com/mxmehl/home-stream/issues/190)) ([4c8aae8](https://github.com/mxmehl/home-stream/commit/4c8aae82f2def3ba7adfef0631f6e9007c76302c))
+* **deps:** update actions/attest-build-provenance action to v4.2.2 ([#217](https://github.com/mxmehl/home-stream/issues/217)) ([9720ff2](https://github.com/mxmehl/home-stream/commit/9720ff20168d203366c5011697a583d61fdd5404))
+* **deps:** update actions/checkout action to v7.0.1 ([#204](https://github.com/mxmehl/home-stream/issues/204)) ([42028a7](https://github.com/mxmehl/home-stream/commit/42028a7ff47b5988b4613d1c79b6e67726e47713))
+* **deps:** update actions/setup-python action to v6.3.0 ([#187](https://github.com/mxmehl/home-stream/issues/187)) ([b6ba7ed](https://github.com/mxmehl/home-stream/commit/b6ba7ed194dff6ca2d8a1132676e5f860e590f23))
+* **deps:** update actions/setup-python action to v7 ([#203](https://github.com/mxmehl/home-stream/issues/203)) ([a216cf3](https://github.com/mxmehl/home-stream/commit/a216cf359af0125397f29e5c71ea7c321e70ee36))
+* **deps:** update astral-sh/setup-uv action to v10 ([#219](https://github.com/mxmehl/home-stream/issues/219)) ([55cc592](https://github.com/mxmehl/home-stream/commit/55cc592585572258426fd0079b3b5eb58fb92035))
+* **deps:** update astral-sh/setup-uv action to v8.3.0 ([#195](https://github.com/mxmehl/home-stream/issues/195)) ([8ee4542](https://github.com/mxmehl/home-stream/commit/8ee4542431a4b92b4f43cd1c52c4ddea75bf497b))
+* **deps:** update astral-sh/setup-uv action to v8.3.1 ([#196](https://github.com/mxmehl/home-stream/issues/196)) ([d8833e9](https://github.com/mxmehl/home-stream/commit/d8833e9fb94bc29a03840a135e30ee04576a49f2))
+* **deps:** update astral-sh/setup-uv action to v8.3.2 ([#197](https://github.com/mxmehl/home-stream/issues/197)) ([67d1380](https://github.com/mxmehl/home-stream/commit/67d138083babc1d554c9d581913d395bba682330))
+* **deps:** update astral-sh/setup-uv action to v9 ([#205](https://github.com/mxmehl/home-stream/issues/205)) ([045d321](https://github.com/mxmehl/home-stream/commit/045d3213821b44f2ead57cd5345703006587dc54))
+* **deps:** update dependency uv_build to &gt;=0.12.0,&lt;0.13.0 ([#212](https://github.com/mxmehl/home-stream/issues/212)) ([4d8565e](https://github.com/mxmehl/home-stream/commit/4d8565e60f41e018273ff19fdad926d3d2bc1899))
+* **deps:** update docker/build-push-action action to v7.3.0 ([#191](https://github.com/mxmehl/home-stream/issues/191)) ([05d4cdb](https://github.com/mxmehl/home-stream/commit/05d4cdb1646183300f51d4742294926fe5c8e2f5))
+* **deps:** update docker/login-action action to v4.4.0 ([#194](https://github.com/mxmehl/home-stream/issues/194)) ([f287d82](https://github.com/mxmehl/home-stream/commit/f287d826f15a9eef2689a2da80e640ce1ff9acbc))
+* **deps:** update docker/login-action action to v4.5.0 ([#206](https://github.com/mxmehl/home-stream/issues/206)) ([b35c319](https://github.com/mxmehl/home-stream/commit/b35c3194872fc9703bc8c5d7bcce80b59c2ac3c1))
+* **deps:** update docker/login-action action to v4.5.1 ([#209](https://github.com/mxmehl/home-stream/issues/209)) ([1cda4bb](https://github.com/mxmehl/home-stream/commit/1cda4bb9531a175c9992a4713ebfd086ec44a225))
+* **deps:** update docker/login-action action to v4.5.2 ([#211](https://github.com/mxmehl/home-stream/issues/211)) ([376bad4](https://github.com/mxmehl/home-stream/commit/376bad4f5b4ab7c90b668eb098bb2e548369807a))
+* **deps:** update github actions group ([#192](https://github.com/mxmehl/home-stream/issues/192)) ([f853b91](https://github.com/mxmehl/home-stream/commit/f853b91e6b13828d8c1b5c018d0e53044498c682))
+* **deps:** update github actions group ([#213](https://github.com/mxmehl/home-stream/issues/213)) ([3bed738](https://github.com/mxmehl/home-stream/commit/3bed7389ce5bb23c4e6ddb9ca7e022f37514b4f2))
+* **deps:** update mxmehl/latest-release-vulnerability-status action to v1.3.0 ([#215](https://github.com/mxmehl/home-stream/issues/215)) ([101fd23](https://github.com/mxmehl/home-stream/commit/101fd234d6692e335692e50793a3adfc7a29ffc2))
+* **deps:** update pypa/gh-action-pypi-publish action to v1.14.1 ([#202](https://github.com/mxmehl/home-stream/issues/202)) ([1249805](https://github.com/mxmehl/home-stream/commit/12498057b63a55b91cc1ac87898c986dd22a2059))
+* **deps:** update zizmorcore/zizmor-action action to v0.6.0 ([#200](https://github.com/mxmehl/home-stream/issues/200)) ([26c7e3d](https://github.com/mxmehl/home-stream/commit/26c7e3d11e07cd07e32360d9e44ca4d4c22391f6))
+* **deps:** update zizmorcore/zizmor-action action to v0.6.1 ([#207](https://github.com/mxmehl/home-stream/issues/207)) ([6edbd65](https://github.com/mxmehl/home-stream/commit/6edbd6583cb3cd18c5f88f1763b23026086d8508))
+* **deps:** update zizmorcore/zizmor-action action to v0.6.2 ([#216](https://github.com/mxmehl/home-stream/issues/216)) ([ce670e6](https://github.com/mxmehl/home-stream/commit/ce670e646e80fd32a807ae7b14d3a8767102fca2))
+* **deps:** update zizmorcore/zizmor-action action to v0.6.3 ([#223](https://github.com/mxmehl/home-stream/issues/223)) ([1ad00b2](https://github.com/mxmehl/home-stream/commit/1ad00b2b695f5db1fb7636b22ca3425c9a232ae5))
+* disable unnecessary ruff check ([#210](https://github.com/mxmehl/home-stream/issues/210)) ([5197854](https://github.com/mxmehl/home-stream/commit/519785434c171a133eb5ab42fd15195166401996))
+
 ## [1.7.0](https://github.com/mxmehl/home-stream/compare/v1.6.0...v1.7.0) (2026-06-25)
 
 
