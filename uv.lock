@@ -365,7 +365,7 @@ wheels = [
 
 [[package]]
 name = "home-stream"
-version = "1.7.1"
+version = "1.7.2"
 source = { editable = "." }
 default-groups = "all"
 dependencies = [
