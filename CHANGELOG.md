@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/mxmehl/home-stream/compare/v1.7.1...v1.7.2) (2026-10-05)
+
+
+### ⚙️ Chores
+
+* **deps:** lock file maintenance ([#234](https://github.com/mxmehl/home-stream/issues/234)) ([4f67670](https://github.com/mxmehl/home-stream/commit/4f676709b904b875c6de3e3815c3d6bd6a06c2bd))
+
 ## [1.7.1](https://github.com/mxmehl/home-stream/compare/v1.7.0...v1.7.1) (2026-09-28)
 
 
