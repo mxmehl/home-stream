@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.2](https://github.com/mxmehl/home-stream/compare/v1.7.1...v1.7.2) (2026-10-16)
+
+
+### ⚙️ Chores
+
+* **deps:** lock file maintenance ([#234](https://github.com/mxmehl/home-stream/issues/234)) ([4f67670](https://github.com/mxmehl/home-stream/commit/4f676709b904b875c6de3e3815c3d6bd6a06c2bd))
+* **deps:** lock file maintenance ([#236](https://github.com/mxmehl/home-stream/issues/236)) ([88ccbee](https://github.com/mxmehl/home-stream/commit/88ccbee928382627f57581b1690aa6a386140a7a))
+* **deps:** update actions/create-github-app-token action to v3.3.0 ([#240](https://github.com/mxmehl/home-stream/issues/240)) ([7492997](https://github.com/mxmehl/home-stream/commit/7492997c15589ed53063292719edcf9719f9eaf5))
+* **deps:** update astral-sh/setup-uv action to v10.3.0 ([#237](https://github.com/mxmehl/home-stream/issues/237)) ([95b65bd](https://github.com/mxmehl/home-stream/commit/95b65bdd786bfcd3a324541e4595ed13bfa7c90b))
+* **deps:** update dependency python to 3.15 ([#239](https://github.com/mxmehl/home-stream/issues/239)) ([b40c9af](https://github.com/mxmehl/home-stream/commit/b40c9af3b9122734e5e3efd3115c65f567995f14))
+* **deps:** update dependency uv_build to &gt;=0.13.0,&lt;0.14.0 ([#238](https://github.com/mxmehl/home-stream/issues/238)) ([a51add4](https://github.com/mxmehl/home-stream/commit/a51add4a6c7c029336b61782533bf01875ac29fe))
+
 ## [1.7.1](https://github.com/mxmehl/home-stream/compare/v1.7.0...v1.7.1) (2026-09-28)
 
 
