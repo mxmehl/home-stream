@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # --- Runtime stage ---
-FROM python:3.14-slim-trixie
+FROM python:3.15-slim-trixie
 
 # Ensure UTF-8 filesystem encoding for filenames with non-ASCII characters
 ENV LANG=C.UTF-8
