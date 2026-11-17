@@ -128,7 +128,7 @@ def verify_password(username: str, password: str) -> str | None:
     if username in current_app.config["USERS"] and checkpw(
         password.encode("utf-8"), current_app.config["USERS"].get(username).encode("utf-8")
     ):
-        request.password = password  # ty: ignore[unresolved-attribute]
+        request.password = password  # ty: ignore[missing-attribute]
         return username
     return None
 
