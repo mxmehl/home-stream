@@ -7,18 +7,18 @@ name = "home-stream"
 version = "1.7.1"
 description = "Browser and streaming interface for local media files"
 authors = [{ name = "Max Mehl", email = "mail@mehl.mx" }]
-requires-python = ">=3.10,<4"
+requires-python = ">=3.11,<4"
 readme = "README.md"
 license = "GPL-3.0-only"
 license-files = ["LICENSE", "LICENSES/*"]
 keywords = []
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 dependencies = [
     "bcrypt>=5.0.0,<6",
