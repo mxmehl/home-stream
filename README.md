@@ -32,7 +32,7 @@ Of course, you can also use it purely locally, although there are probably bette
 
 ## Installation
 
-Minimum Python version: 3.10
+Minimum Python version: 3.11
 
 ### Install and run via pipx (Recommended)
 
