@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 # --- Build stage ---
-FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.15-trixie-slim AS builder
 
 # Install build dependencies for packages with C extensions (uwsgi)
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -28,6 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # --- Runtime stage ---
+# Must match the Python minor version of the builder stage (venv and uwsgi link against libpython3.15)
 FROM python:3.15-slim-trixie
 
 # Ensure UTF-8 filesystem encoding for filenames with non-ASCII characters
