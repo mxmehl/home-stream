@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.1](https://github.com/mxmehl/home-stream/compare/v1.8.0...v1.8.1) (2026-11-20)
+
+
+### 🔥 Bug Fixes
+
+* Docker image python versions ([#262](https://github.com/mxmehl/home-stream/issues/262)) ([e9c6898](https://github.com/mxmehl/home-stream/commit/e9c689877300a74e86155e5858a02f19557a32f9))
+
+
+### ⚙️ Chores
+
+* **deps:** lock file maintenance ([#260](https://github.com/mxmehl/home-stream/issues/260)) ([9d7c8dd](https://github.com/mxmehl/home-stream/commit/9d7c8dd81e8705801f4935713a6b680ba48d68d7))
+
 ## [1.8.0](https://github.com/mxmehl/home-stream/compare/v1.7.1...v1.8.0) (2026-11-20)
 
 
