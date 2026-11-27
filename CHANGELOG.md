@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.8.2](https://github.com/mxmehl/home-stream/compare/v1.8.1...v1.8.2) (2026-11-27)
+
+
+### ⚙️ Chores
+
+* **deps:** lock file maintenance ([#265](https://github.com/mxmehl/home-stream/issues/265)) ([a57bf88](https://github.com/mxmehl/home-stream/commit/a57bf883e6f34807edeb4b28dbc00e2a1a6958bb))
+* **deps:** update actions/create-github-app-token action to v3.4.0 ([#263](https://github.com/mxmehl/home-stream/issues/263)) ([11a8bbd](https://github.com/mxmehl/home-stream/commit/11a8bbd5280d389703bce053c0d8b32ce31eed0c))
+* **deps:** update astral-sh/setup-uv action to v10.4.0 ([#266](https://github.com/mxmehl/home-stream/issues/266)) ([1796d21](https://github.com/mxmehl/home-stream/commit/1796d210e0746bb931c2be90fb7b00707b1278ac))
+* **deps:** update zizmorcore/zizmor-action action to v0.9.1 ([#267](https://github.com/mxmehl/home-stream/issues/267)) ([43893b6](https://github.com/mxmehl/home-stream/commit/43893b6e614fc02993b0e62f2bfac40fac259790))
+* **deps:** update zizmorcore/zizmor-action action to v0.9.2 ([#268](https://github.com/mxmehl/home-stream/issues/268)) ([8a056a5](https://github.com/mxmehl/home-stream/commit/8a056a59531271514b3a53e52607f2cde810d6ef))
+
 ## [1.8.1](https://github.com/mxmehl/home-stream/compare/v1.8.0...v1.8.1) (2026-11-20)
 
 
